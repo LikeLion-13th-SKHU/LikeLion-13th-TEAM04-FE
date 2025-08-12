@@ -1,6 +1,24 @@
 import { ReactNode } from "react";
 import styled from "styled-components";
 
+
+const LoginCard = ({ onGoogleClick, children }: Props) => {
+  return (
+    <Card role="dialog" aria-labelledby="login-title">
+      <Title id="login-title">로그인/회원가입</Title>
+      <Actions>
+        <GoogleButton onClick={onGoogleClick} aria-label="Google로 시작하기">
+          <GoogleIcon />
+          <span>Google로 시작하기</span>
+        </GoogleButton>
+        {children}
+      </Actions>
+    </Card>
+  );
+};
+
+export default LoginCard;
+
 const Card = styled.section`
   width: min(92vw, ${({ theme }) => theme.size.cardW});
   max-width: 400px;
@@ -76,18 +94,3 @@ type Props = {
   onGoogleClick?: () => void;
   children?: ReactNode;
 };
-
-export default function LoginCard({ onGoogleClick, children }: Props) {
-  return (
-    <Card role="dialog" aria-labelledby="login-title">
-      <Title id="login-title">로그인/회원가입</Title>
-      <Actions>
-        <GoogleButton onClick={onGoogleClick} aria-label="Google로 시작하기">
-          <GoogleIcon />
-          <span>Google로 시작하기</span>
-        </GoogleButton>
-        {children}
-      </Actions>
-    </Card>
-  );
-}
