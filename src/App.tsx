@@ -1,14 +1,22 @@
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "styled-components";
 import { theme } from "./styles/theme";
 import Header from "./components/Header";
 import { AuthProvider } from "./contexts/AuthContext";
+import MainPage from "./pages/MainPage";
+import LoginPage from "./pages/LoginPage";
 
 function App() {
   return (
     <ThemeProvider theme={theme}>
       <AuthProvider>
-        <Header />
-        <main>{/* 페이지 콘텐츠가 여기에 렌더링됩니다. */}</main>
+        <Router>
+          <Header />
+          <Routes>
+            <Route path="/" element={<MainPage />} />
+            <Route path="/login" element={<LoginPage />} />
+          </Routes>
+        </Router>
       </AuthProvider>
     </ThemeProvider>
   );
