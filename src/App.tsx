@@ -5,6 +5,7 @@ import Header from "./components/Header";
 import { AuthProvider } from "./contexts/AuthContext";
 import MainPage from "./pages/MainPage";
 import LoginPage from "./pages/LoginPage";
+import AIMatchChatPage from "./pages/AIMatchChatPage";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
           <Routes>
             <Route path="/" element={<MainPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/ai-match" element={<AIMatchChatPage />} />
           </Routes>
         </Router>
       </AuthProvider>
