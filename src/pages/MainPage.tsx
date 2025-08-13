@@ -9,19 +9,20 @@ import { ReactComponent as DeliveryIcon } from "../assets/icons/delivery.svg";
 import { ReactComponent as RestaurantIcon } from "../assets/icons/restaurant.svg";
 import { useAuth } from "../contexts/AuthContext";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 export default function MainPage() {
   const { user } = useAuth();
   const [currentSlide, setCurrentSlide] = useState(0);
 
   const slides = [
-    { 
-      id: 1, 
+    {
+      id: 1,
       type: "matching",
       title: "청년과 상인을 연결하는 AI 매칭",
       description: "챗봇과 대화하며 최적의 매칭을 찾아보세요",
       buttonText: "챗봇으로 매칭하기",
-      buttonLink: "/ai-match"
+      buttonLink: "/ai-match",
     },
     { id: 2, type: "content", content: "두 번째 슬라이드" },
     { id: 3, type: "content", content: "세 번째 슬라이드" },
@@ -43,13 +44,13 @@ export default function MainPage() {
           <MenuButton>
             <MenuIcon />
           </MenuButton>
-          
+
           <SearchBar>
             <SearchIcon />
             <SearchInput placeholder="검색" />
           </SearchBar>
         </SearchRow>
-        
+
         <FilterButtons>
           <FilterButton>지역</FilterButton>
           <FilterButton>종류</FilterButton>
@@ -66,39 +67,42 @@ export default function MainPage() {
           <CarouselButton onClick={prevSlide} $position="left">
             <ArrowLeftIcon />
           </CarouselButton>
-          
+
           <CarouselContent>
             <CarouselTrack $currentSlide={currentSlide}>
               {slides.map((slide, index) => (
-                <CarouselSlide key={slide.id} $isActive={index === currentSlide}>
+                <CarouselSlide
+                  key={slide.id}
+                  $isActive={index === currentSlide}
+                >
                   {slide.type === "matching" ? (
                     <MatchingSlideCard>
                       <MatchingSlideContent>
                         <MatchingSlideTitle>{slide.title}</MatchingSlideTitle>
-                        <MatchingSlideDescription>{slide.description}</MatchingSlideDescription>
-                        <MatchingSlideButton href={slide.buttonLink}>
+                        <MatchingSlideDescription>
+                          {slide.description}
+                        </MatchingSlideDescription>
+                        <MatchingSlideButton to={slide.buttonLink || "/"}>
                           {slide.buttonText}
                         </MatchingSlideButton>
                       </MatchingSlideContent>
                     </MatchingSlideCard>
                   ) : (
-                    <CarouselCard>
-                      {slide.content}
-                    </CarouselCard>
+                    <CarouselCard>{slide.content}</CarouselCard>
                   )}
                 </CarouselSlide>
               ))}
             </CarouselTrack>
           </CarouselContent>
-          
+
           <CarouselButton onClick={nextSlide} $position="right">
             <ArrowRightIcon />
           </CarouselButton>
         </CarouselContainer>
         <CarouselDots>
           {slides.map((_, index) => (
-            <Dot 
-              key={index} 
+            <Dot
+              key={index}
               $isActive={index === currentSlide}
               onClick={() => setCurrentSlide(index)}
             />
@@ -112,7 +116,7 @@ export default function MainPage() {
         <CategorySection>
           <SectionHeader>
             <SectionTitle>인기 카테고리</SectionTitle>
-            <ViewAllLink>전체보기 →</ViewAllLink>
+            <ViewAllLink to="/notices">전체보기 →</ViewAllLink>
           </SectionHeader>
           <CategoryGrid>
             <CategoryCard>
@@ -146,7 +150,7 @@ export default function MainPage() {
         <JobSection>
           <SectionHeader>
             <SectionTitle>최신 채용 공고</SectionTitle>
-            <ViewAllLink>전체보기 →</ViewAllLink>
+            <ViewAllLink to="/notices">전체보기 →</ViewAllLink>
           </SectionHeader>
           <JobList>
             <JobCard>
@@ -213,11 +217,11 @@ const MainContainer = styled.main`
   margin-top: 0;
   padding: 1rem;
   min-height: calc(100vh - 60px);
-  
+
   @media (min-width: 768px) {
     padding: 1rem 2rem;
   }
-  
+
   @media (min-width: 1024px) {
     padding: 1rem 5rem;
   }
@@ -240,7 +244,7 @@ const SearchRow = styled.div`
   width: 100%;
   max-width: 600px;
   position: relative;
-  
+
   @media (max-width: 768px) {
     justify-content: flex-start;
     gap: 0.75rem;
@@ -260,11 +264,11 @@ const MenuButton = styled.button`
   flex-shrink: 0;
   position: absolute;
   left: 0;
-  
+
   &:hover {
     color: ${({ theme }) => theme.colors.blue[900]};
   }
-  
+
   @media (max-width: 768px) {
     position: static;
     width: 44px;
@@ -278,7 +282,7 @@ const FilterButtons = styled.div`
   flex-wrap: wrap;
   justify-content: center;
   width: 100%;
-  
+
   @media (max-width: 768px) {
     gap: 0.25rem;
   }
@@ -293,12 +297,12 @@ const FilterButton = styled.button`
   font-size: 0.875rem;
   cursor: pointer;
   transition: all 0.2s;
-  
+
   &:hover {
     background: ${({ theme }) => theme.colors.blue[100]};
     border-color: ${({ theme }) => theme.colors.blue[300]};
   }
-  
+
   @media (max-width: 768px) {
     padding: 0.375rem 0.75rem;
     font-size: 0.8rem;
@@ -315,13 +319,13 @@ const SearchBar = styled.div`
   background: white;
   width: 100%;
   max-width: 400px;
-  
+
   svg {
     width: 20px;
     height: 20px;
     color: ${({ theme }) => theme.colors.gray[900]};
   }
-  
+
   @media (max-width: 768px) {
     max-width: none;
     flex: 1;
@@ -333,7 +337,7 @@ const SearchInput = styled.input`
   border: none;
   outline: none;
   font-size: 1rem;
-  
+
   &::placeholder {
     color: ${({ theme }) => theme.colors.gray[900]};
   }
@@ -351,7 +355,7 @@ const CarouselContainer = styled.div`
   position: relative;
 `;
 
-const CarouselButton = styled.button<{ $position: 'left' | 'right' }>`
+const CarouselButton = styled.button<{ $position: "left" | "right" }>`
   display: flex;
   align-items: center;
   justify-content: center;
@@ -364,13 +368,13 @@ const CarouselButton = styled.button<{ $position: 'left' | 'right' }>`
   top: 50%;
   transform: translateY(-50%);
   z-index: 10;
-  ${({ $position }) => $position === 'left' ? 'left: 0;' : 'right: 0;'}
+  ${({ $position }) => ($position === "left" ? "left: 0;" : "right: 0;")}
   transition: transform 0.2s ease;
-  
+
   &:hover {
     transform: translateY(-50%) scale(1.1);
   }
-  
+
   svg {
     width: 32px;
     height: 32px;
@@ -447,7 +451,7 @@ const MatchingSlideDescription = styled.p`
   line-height: 1.4;
 `;
 
-const MatchingSlideButton = styled.a`
+const MatchingSlideButton = styled(Link)`
   padding: 0.75rem 1.5rem;
   border: none;
   border-radius: 8px;
@@ -475,7 +479,8 @@ const Dot = styled.div<{ $isActive: boolean }>`
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: ${({ theme, $isActive }) => $isActive ? theme.colors.blue[900] : theme.colors.gray[200]};
+  background: ${({ theme, $isActive }) =>
+    $isActive ? theme.colors.blue[900] : theme.colors.gray[200]};
   cursor: pointer;
   transition: background 0.3s ease;
 `;
@@ -484,11 +489,11 @@ const ContentSection = styled.div`
   display: grid;
   grid-template-columns: 1fr;
   gap: 2rem;
-  
+
   @media (min-width: 768px) {
     grid-template-columns: 1fr 1fr;
   }
-  
+
   @media (min-width: 1024px) {
     grid-template-columns: 1fr 2fr 1fr;
   }
@@ -508,11 +513,11 @@ const SectionTitle = styled.h2`
   margin: 0;
 `;
 
-const ViewAllLink = styled.a`
+const ViewAllLink = styled(Link)`
   color: ${({ theme }) => theme.colors.blue[900]};
   text-decoration: none;
   font-size: 0.875rem;
-  
+
   &:hover {
     text-decoration: underline;
   }
@@ -524,7 +529,7 @@ const CategoryGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
-  
+
   @media (max-width: 480px) {
     grid-template-columns: 1fr;
     gap: 0.75rem;
@@ -542,7 +547,7 @@ const CategoryCard = styled.div`
   background: white;
   cursor: pointer;
   transition: all 0.2s;
-  
+
   &:hover {
     border-color: ${({ theme }) => theme.colors.blue[300]};
     box-shadow: 0 2px 8px rgba(33, 66, 171, 0.1);
@@ -578,7 +583,7 @@ const JobCard = styled.div`
   background: white;
   cursor: pointer;
   transition: all 0.2s;
-  
+
   &:hover {
     border-color: ${({ theme }) => theme.colors.blue[300]};
     box-shadow: 0 2px 8px rgba(33, 66, 171, 0.1);
@@ -601,7 +606,7 @@ const JobTitle = styled.h3`
 `;
 
 const JobSalary = styled.span`
-  background: #FFD700;
+  background: #ffd700;
   color: ${({ theme }) => theme.colors.gray[900]};
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
@@ -662,7 +667,7 @@ const ActionSection = styled.div`
   justify-content: center;
   margin-top: 2rem;
   margin-bottom: 2rem;
-  
+
   @media (max-width: 768px) {
     margin-top: 1.5rem;
     margin-bottom: 1.5rem;
@@ -684,10 +689,9 @@ const ActionButton = styled.a`
   &:hover {
     background: ${({ theme }) => theme.colors.blue[700]};
   }
-  
+
   @media (max-width: 768px) {
     padding: 0.625rem 1.25rem;
     font-size: 0.9rem;
   }
 `;
-
