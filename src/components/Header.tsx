@@ -1,5 +1,4 @@
 import styled from "styled-components";
-import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { colors } from "../styles/theme";
 import { ReactComponent as ChatIconSvg } from "../assets/icons/chat.svg";
@@ -10,12 +9,12 @@ const Header = () => {
 
   return (
     <HeaderRoot>
-      <HomeLink to="/" aria-label="청상회 홈">
+      <HomeLink href="/" aria-label="청상회 홈">
         <LogoSquare aria-hidden={true} />
         <BrandText>청상회</BrandText>
       </HomeLink>
 
-      <MatchButton to="/ai-match" aria-label="AI 챗봇으로 청년·상인 매칭">
+      <MatchButton href="/ai-match" aria-label="AI 챗봇으로 청년·상인 매칭">
         청년·상인 AI 매칭
       </MatchButton>
 
@@ -23,15 +22,15 @@ const Header = () => {
         {user ? (
           <>
             <Actions>
-              <IconLink to="/messages" aria-label="채팅">
+              <IconLink href="/messages" aria-label="채팅">
                 <ChatIcon aria-hidden={true} />
               </IconLink>
-              <IconLink to="/notifications" aria-label="알림">
+              <IconLink href="/notifications" aria-label="알림">
                 <BellIcon aria-hidden={true} />
               </IconLink>
             </Actions>
 
-            <ProfileArea to="/me" aria-label="내 프로필">
+            <ProfileArea href="/me" aria-label="내 프로필">
               <Avatar aria-hidden={true} src={user.profileImageUrl} />
               <div>
                 <UserRole>{user.role}</UserRole>
@@ -40,7 +39,7 @@ const Header = () => {
             </ProfileArea>
           </>
         ) : (
-          <AuthLink to="/login">로그인/회원가입</AuthLink>
+          <AuthLink href="/login">로그인/회원가입</AuthLink>
         )}
       </RightArea>
     </HeaderRoot>
@@ -63,7 +62,7 @@ const HeaderRoot = styled.header`
   border-bottom: 0.0625rem solid ${colors.blue[300]};
 `;
 
-const HomeLink = styled(Link)`
+const HomeLink = styled.a`
   display: flex;
   align-items: center;
   gap: 0.25rem;
@@ -71,7 +70,7 @@ const HomeLink = styled(Link)`
   text-decoration: none;
 `;
 
-const MatchButton = styled(Link)`
+const MatchButton = styled.a`
   margin-left: 0.5rem;
   padding: 0.375rem 0.5rem;
   border-radius: 9999px;
@@ -123,7 +122,7 @@ const Actions = styled.div`
   gap: 0.75rem;
 `;
 
-const IconLink = styled(Link)`
+const IconLink = styled.a`
   display: inline-flex;
   color: ${colors.gray[900]};
   text-decoration: none;
@@ -152,7 +151,7 @@ const BellIcon = styled(BellIconSvg)`
   }
 `;
 
-const AuthLink = styled(Link)`
+const AuthLink = styled.a`
   color: ${colors.gray[900]};
   font-size: 0.8125rem;
   text-decoration: none;
@@ -162,7 +161,7 @@ const AuthLink = styled(Link)`
   }
 `;
 
-const ProfileArea = styled(Link)`
+const ProfileArea = styled.a`
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
