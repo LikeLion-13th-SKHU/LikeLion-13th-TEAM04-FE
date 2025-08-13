@@ -6,6 +6,9 @@ import { AuthProvider } from "./contexts/AuthContext";
 import MainPage from "./pages/MainPage";
 import LoginPage from "./pages/LoginPage";
 import AIMatchChatPage from "./pages/AIMatchChatPage";
+import NoticeListPage from "./pages/NoticeListPage";
+import NoticeDetailPage from "./pages/NoticeDetailPage";
+import NoticeCreatePage from "./pages/NoticeCreatePage";
 
 function App() {
   return (
@@ -16,7 +19,12 @@ function App() {
           <Routes>
             <Route path="/" element={<MainPage />} />
             <Route path="/login" element={<LoginPage />} />
+
             <Route path="/ai-match" element={<AIMatchChatPage />} />
+
+            <Route path="/notices" element={<NoticeListPage />} />
+            <Route path="/notices/:id" element={<NoticeDetailPage />} />
+            <Route path="/notices/new" element={<NoticeCreatePage />} />
           </Routes>
         </Router>
       </AuthProvider>
