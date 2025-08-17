@@ -16,7 +16,7 @@ export default function MyPage() {
     id: "1",
     name: "박성준",
     profileImageUrl: "https://via.placeholder.com150",
-    role: "청년" // 청년으로 변경. 상인으로 변경 시 상인 전용 화면 뜸.
+    role: "상인" // 청년으로 변경. 상인으로 변경 시 상인 전용 화면 뜸.
   };
 
   // 공고 모아보기 모드 상태 관리

@@ -22,7 +22,7 @@ const Header = () => {
         {user ? (
           <>
             <Actions>
-              <IconLink href="/messages" aria-label="채팅">
+              <IconLink href="/message" aria-label="채팅">
                 <ChatIcon aria-hidden={true} />
               </IconLink>
               <IconLink href="/notifications" aria-label="알림">
