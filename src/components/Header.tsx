@@ -23,12 +23,13 @@ const Header = () => {
         {user ? (
           <>
             <Actions>
-              <IconLink to="/messages" aria-label="채팅">
+              <IconLink to="/chat" aria-label="채팅">
                 <ChatIcon aria-hidden={true} />
               </IconLink>
-              <IconLink to="/notifications" aria-label="알림">
+              {/* 알림 기능 추가 예정 */}
+              {/* <IconLink to="/notifications" aria-label="알림">
                 <BellIcon aria-hidden={true} />
-              </IconLink>
+              </IconLink> */}
             </Actions>
 
             <ProfileArea to="/me" aria-label="내 프로필">
