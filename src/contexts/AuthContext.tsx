@@ -155,8 +155,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('userInfo');
     
-    // 사용자별 데이터는 유지 (닉네임, 연락처 등)
-    // 이는 다른 계정으로 로그인할 때도 데이터가 섞이지 않도록 하기 위함
+    // 사용자별 데이터는 유지 (닉네임, 역할 등)
+    // 이는 다시 로그인할 때 복원되도록 하기 위함
     
     setUser(null);
     setAccessToken(null);

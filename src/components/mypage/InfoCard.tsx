@@ -14,10 +14,10 @@ interface InfoCardProps {
 
 export default function InfoCard({ userName, userId, currentScore, currentGrade, onNicknameChange }: InfoCardProps) {
   const { saveUserData, getUserData, updateUserRole, user, logout } = useAuth();
-  const [isEditing, setIsEditing] = useState(false);
-  const [nickname, setNickname] = useState(userName);
   const [showRoleChange, setShowRoleChange] = useState(false);
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [nickname, setNickname] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   // 컴포넌트 마운트 시 저장된 데이터 불러오기
   useEffect(() => {
@@ -65,44 +65,6 @@ export default function InfoCard({ userName, userId, currentScore, currentGrade,
       alert(`${newRole}으로 역할이 변경되었습니다.`);
     } catch (error) {
       alert("역할 변경에 실패했습니다. 다시 시도해주세요.");
-    }
-  };
-
-  const handleWithdraw = async () => {
-    if (!window.confirm('정말로 회원탈퇴를 하시겠습니까?\n\n탈퇴 시 모든 데이터가 영구적으로 삭제되며 복구할 수 없습니다.')) {
-      return;
-    }
-
-    setIsWithdrawing(true);
-    
-    try {
-      // 백엔드 API 호출하여 회원탈퇴 처리
-      const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
-      const response = await fetch(`${apiBaseUrl}/api/members/me`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      });
-
-      if (response.ok) {
-        // 회원탈퇴 성공
-        alert('회원탈퇴가 완료되었습니다.');
-        
-        // 로그아웃 처리
-        logout();
-        
-        // 메인 페이지로 이동
-        window.location.href = '/';
-      } else {
-        throw new Error('회원탈퇴 처리에 실패했습니다.');
-      }
-    } catch (error) {
-      console.error('회원탈퇴 오류:', error);
-      alert('회원탈퇴 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
-    } finally {
-      setIsWithdrawing(false);
     }
   };
 
@@ -198,24 +160,6 @@ export default function InfoCard({ userName, userId, currentScore, currentGrade,
         </SectionHeader>
         <InfoDescription>
           해외 또는 해외 아이피로 로그인을 시도할 경우 청상회 접속을 차단합니다.
-        </InfoDescription>
-      </InfoSection>
-
-      <Divider />
-
-      {/* 회원탈퇴 섹션 */}
-      <InfoSection>
-        <SectionHeader>
-          <SectionTitle>회원탈퇴</SectionTitle>
-          <WithdrawButton 
-            onClick={handleWithdraw}
-            disabled={isWithdrawing}
-          >
-            {isWithdrawing ? '처리 중...' : '탈퇴'}
-          </WithdrawButton>
-        </SectionHeader>
-        <InfoDescription>
-          회원탈퇴 시 모든 데이터가 영구적으로 삭제되며 복구할 수 없습니다.
         </InfoDescription>
       </InfoSection>
     </InfoCardContainer>
@@ -494,32 +438,6 @@ const ToggleSlider = styled.div`
   right: 0.125rem;
   transition: transform 0.2s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-`;
-
-const WithdrawButton = styled.button`
-  padding: 0.375rem 0.75rem;
-  background-color: ${colors.red[500]};
-  border: none;
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover:not(:disabled) {
-    background-color: ${colors.red[600]};
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-
-  &:disabled {
-    background-color: ${colors.gray[300]};
-    color: ${colors.gray[500]};
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-  }
 `;
 
 const Divider = styled.hr`
