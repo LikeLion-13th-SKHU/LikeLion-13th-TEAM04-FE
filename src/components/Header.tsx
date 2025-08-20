@@ -1,12 +1,41 @@
 import styled from "styled-components";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { colors } from "../styles/theme";
 import { ReactComponent as ChatIconSvg } from "../assets/icons/chat.svg";
 import { ReactComponent as BellIconSvg } from "../assets/icons/bell.svg";
+import { useState, useEffect, useRef } from "react";
 
 const Header = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  // 외부 클릭 시 프로필 메뉴 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    setShowProfileMenu(false);
+    
+    // 로그아웃 후 메인 페이지로 이동
+    navigate('/');
+    
+    // 로그아웃 성공 메시지 (선택사항)
+    alert('로그아웃되었습니다.');
+  };
 
   return (
     <HeaderRoot>
@@ -23,7 +52,7 @@ const Header = () => {
         {user ? (
           <>
             <Actions>
-              <IconLink to="/chat" aria-label="채팅">
+              <IconLink to="/chat" aria-label="일반 채팅">
                 <ChatIcon aria-hidden={true} />
               </IconLink>
               {/* 알림 기능 추가 예정 */}
@@ -32,13 +61,25 @@ const Header = () => {
               </IconLink> */}
             </Actions>
 
-            <ProfileArea to="/me" aria-label="내 프로필">
-              <Avatar aria-hidden={true} src={user.profileImageUrl} />
-              <div>
-                <UserRole>{user.role}</UserRole>
-                <UserName>{user.name}</UserName>
-              </div>
-            </ProfileArea>
+            <ProfileContainer ref={profileRef}>
+              <ProfileArea onClick={() => setShowProfileMenu(!showProfileMenu)}>
+                <Avatar aria-hidden={true} src={user.profileImageUrl} />
+                <div>
+                  <UserRole>{user.role}</UserRole>
+                  <UserName>{user.nickname || user.name}</UserName>
+                </div>
+              </ProfileArea>
+              
+              {showProfileMenu && (
+                <ProfileMenu>
+                  <ProfileMenuItem to="/me">내 프로필</ProfileMenuItem>
+                  <ProfileMenuDivider />
+                  <ProfileMenuButton onClick={handleLogout}>
+                    로그아웃
+                  </ProfileMenuButton>
+                </ProfileMenu>
+              )}
+            </ProfileContainer>
           </>
         ) : (
           <AuthLink to="/login">로그인/회원가입</AuthLink>
@@ -163,12 +204,80 @@ const AuthLink = styled(Link)`
   }
 `;
 
-const ProfileArea = styled(Link)`
+const ProfileContainer = styled.div`
+  position: relative;
+`;
+
+const ProfileArea = styled.div`
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  text-decoration: none;
+  cursor: pointer;
   color: ${colors.gray[900]};
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: ${colors.gray[100]};
+  }
+`;
+
+const ProfileMenu = styled.div`
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  min-width: 160px;
+  background: ${colors.white};
+  border: 1px solid ${colors.gray[200]};
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  z-index: 20;
+`;
+
+const ProfileMenuItem = styled(Link)`
+  display: block;
+  padding: 0.75rem 1rem;
+  color: ${colors.gray[700]};
+  text-decoration: none;
+  font-size: 0.875rem;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: ${colors.gray[50]};
+  }
+
+  &:first-child {
+    border-radius: 0.5rem 0.5rem 0 0;
+  }
+`;
+
+const ProfileMenuButton = styled.button`
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  color: ${colors.red[600]};
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  text-align: left;
+
+  &:hover {
+    background-color: ${colors.gray[50]};
+  }
+
+  &:last-child {
+    border-radius: 0 0 0.5rem 0.5rem;
+  }
+`;
+
+const ProfileMenuDivider = styled.div`
+  height: 1px;
+  background-color: ${colors.gray[200]};
+  margin: 0.25rem 0;
 `;
 
 const Avatar = styled.img`

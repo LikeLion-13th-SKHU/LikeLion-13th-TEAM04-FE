@@ -1,26 +1,19 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import styled from "styled-components";
-import Header from "../components/Header";
 import { colors } from "../styles/theme";
 import type { ChatMessageItem, User } from "../types/userChat";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function ChatRoomPage() {
   const { chatRoomId } = useParams<{ chatRoomId: string }>();
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
   const [inputMessage, setInputMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessageItem[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // 임시 사용자 정보 (현재 로그인한 사용자)
-  const currentUser: User = {
-    id: "user1",
-    name: "김상인",
-    role: "상인",
-    profileImageUrl: "https://via.placeholder.com/40"
-  };
-  
-  // 임시 상대방 정보
+  // 임시 상대방 정보 (실제로는 채팅방 ID를 통해 가져와야 함)
   const otherUser: User = {
     id: "user2",
     name: "박청년",
@@ -31,6 +24,8 @@ export default function ChatRoomPage() {
 
   // 임시 메시지 데이터
   useEffect(() => {
+    if (!isAuthenticated || !user) return;
+    
     const sampleMessages: ChatMessageItem[] = [
       {
         id: "1",
@@ -43,9 +38,9 @@ export default function ChatRoomPage() {
       },
       {
         id: "2",
-        senderId: "user1",
-        senderName: "김상인",
-        senderAvatarUrl: currentUser.profileImageUrl,
+        senderId: user.id,
+        senderName: user.name,
+        senderAvatarUrl: user.profileImageUrl,
         content: "안녕하세요! 지원서 잘 봤습니다.",
         createdAt: Date.now() - 1000 * 60 * 60,
         isRead: true
@@ -61,18 +56,18 @@ export default function ChatRoomPage() {
       }
     ];
     setMessages(sampleMessages);
-  }, [currentUser.profileImageUrl, otherUser.profileImageUrl]);
+  }, [user?.profileImageUrl, otherUser.profileImageUrl, user?.id, user?.name, isAuthenticated]);
 
   // 메시지 전송
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputMessage.trim()) return;
+    if (!inputMessage.trim() || !user) return;
 
     const newMessage: ChatMessageItem = {
       id: Date.now().toString(),
-      senderId: currentUser.id,
-      senderName: currentUser.name,
-      senderAvatarUrl: currentUser.profileImageUrl,
+      senderId: user.id,
+      senderName: user.name,
+      senderAvatarUrl: user.profileImageUrl,
       content: inputMessage.trim(),
       createdAt: Date.now(),
       isRead: false
@@ -86,12 +81,12 @@ export default function ChatRoomPage() {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (inputMessage.trim()) {
+      if (inputMessage.trim() && user) {
         const newMessage: ChatMessageItem = {
           id: Date.now().toString(),
-          senderId: currentUser.id,
-          senderName: currentUser.name,
-          senderAvatarUrl: currentUser.profileImageUrl,
+          senderId: user.id,
+          senderName: user.name,
+          senderAvatarUrl: user.profileImageUrl,
           content: inputMessage.trim(),
           createdAt: Date.now(),
           isRead: false
@@ -105,8 +100,15 @@ export default function ChatRoomPage() {
 
   // 스크롤을 맨 아래로
   useEffect(() => {
+    if (!isAuthenticated || !user) return;
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isAuthenticated, user]);
+  
+  // 로그인되지 않은 경우 로그인 페이지로 리다이렉트
+  if (!isAuthenticated || !user) {
+    navigate('/login');
+    return null;
+  }
 
   const formatTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleTimeString("ko-KR", {
@@ -136,11 +138,11 @@ export default function ChatRoomPage() {
       <ChatContainer>
         <MessagesContainer>
           {messages.map((message) => (
-            <MessageBubble key={message.id} $isMine={message.senderId === currentUser.id}>
-              {message.senderId !== currentUser.id && (
+            <MessageBubble key={message.id} $isMine={message.senderId === user.id}>
+              {message.senderId !== user.id && (
                 <MessageAvatar src={message.senderAvatarUrl} alt={message.senderName} />
               )}
-              <MessageContent $isMine={message.senderId === currentUser.id}>
+              <MessageContent $isMine={message.senderId === user.id}>
                 <MessageText>{message.content}</MessageText>
                 <MessageTime>{formatTime(message.createdAt)}</MessageTime>
               </MessageContent>
@@ -171,7 +173,7 @@ export default function ChatRoomPage() {
 const PageContainer = styled.div`
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: calc(100vh - 3.75rem);
   background-color: ${colors.white};
   max-width: 768px;
   margin: 0 auto;

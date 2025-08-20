@@ -171,7 +171,6 @@ const OutlineButton = styled.button`
 const TemplateContainer = styled.div`
   margin-top: 0.5rem;
 `;
-
 const LeftActions = styled.div`
   display: inline-flex;
   gap: 0.5rem;
@@ -180,3 +179,4 @@ const LeftActions = styled.div`
 const RightActions = styled.div`
   display: inline-flex;
 `;
+
