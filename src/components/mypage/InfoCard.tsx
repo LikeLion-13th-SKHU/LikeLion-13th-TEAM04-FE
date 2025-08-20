@@ -12,21 +12,27 @@ interface InfoCardProps {
   onNicknameChange?: (newNickname: string) => void;
 }
 
-export default function InfoCard({ userName, userId, currentScore, currentGrade, onNicknameChange }: InfoCardProps) {
-  const { saveUserData, getUserData, updateUserRole, user, logout } = useAuth();
+export default function InfoCard({
+  userName,
+  userId,
+  currentScore,
+  currentGrade,
+  onNicknameChange,
+}: InfoCardProps) {
+  const { updateUserRole, updateUserNickname, user, logout } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [nickname, setNickname] = useState(userName);
   const [showRoleChange, setShowRoleChange] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
-  // 컴포넌트 마운트 시 저장된 데이터 불러오기
+  // 전역 사용자 상태에서 닉네임 동기화
   useEffect(() => {
-    const savedNickname = getUserData('nickname');
-
-    if (savedNickname) {
-      setNickname(savedNickname);
+    if (user?.nickname) {
+      setNickname(user.nickname);
+    } else {
+      setNickname(userName);
     }
-  }, [userId, getUserData]);
+  }, [userId, user?.nickname, userName]);
 
   // userName이 변경될 때 nickname도 업데이트 (외부에서 nickname이 변경된 경우)
   useEffect(() => {
@@ -39,9 +45,8 @@ export default function InfoCard({ userName, userId, currentScore, currentGrade,
 
   const handleSave = () => {
     setIsEditing(false);
-
-    // AuthContext를 통해 사용자별 데이터 저장
-    saveUserData('nickname', nickname);
+    // 전역 상태에 닉네임 저장
+    updateUserNickname(nickname);
 
     if (onNicknameChange && nickname !== userName) {
       onNicknameChange(nickname);
@@ -50,17 +55,16 @@ export default function InfoCard({ userName, userId, currentScore, currentGrade,
 
   const handleCancel = () => {
     setIsEditing(false);
-    // 저장된 데이터로 되돌리기
-    const savedNickname = getUserData('nickname');
-    setNickname(savedNickname || userName);
+    // 전역 사용자 닉네임으로 되돌리기
+    setNickname(user?.nickname || userName);
   };
 
-  const handleRoleChange = async (newRole: '청년' | '상인') => {
+  const handleRoleChange = async (newRole: "청년" | "상인") => {
     try {
       // 역할 변경
-      await updateUserRole(newRole === '청년' ? 'YOUTH' : 'MERCHANT');
+      await updateUserRole(newRole === "청년" ? "YOUTH" : "MERCHANT");
       setShowRoleChange(false);
-      
+
       // 성공 메시지 표시
       alert(`${newRole}으로 역할이 변경되었습니다.`);
     } catch (error) {
@@ -69,38 +73,42 @@ export default function InfoCard({ userName, userId, currentScore, currentGrade,
   };
 
   const handleWithdraw = async () => {
-    if (!window.confirm('정말로 회원탈퇴를 하시겠습니까?\n\n탈퇴 시 모든 데이터가 영구적으로 삭제되며 복구할 수 없습니다.')) {
+    if (
+      !window.confirm(
+        "정말로 회원탈퇴를 하시겠습니까?\n\n탈퇴 시 모든 데이터가 영구적으로 삭제되며 복구할 수 없습니다."
+      )
+    ) {
       return;
     }
 
     setIsWithdrawing(true);
-    
+
     try {
       // 백엔드 API 호출하여 회원탈퇴 처리
       const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
       const response = await fetch(`${apiBaseUrl}/api/members/me`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        }
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
       });
 
       if (response.ok) {
         // 회원탈퇴 성공
-        alert('회원탈퇴가 완료되었습니다.');
-        
+        alert("회원탈퇴가 완료되었습니다.");
+
         // 로그아웃 처리
         logout();
-        
+
         // 메인 페이지로 이동
-        window.location.href = '/';
+        window.location.href = "/";
       } else {
-        throw new Error('회원탈퇴 처리에 실패했습니다.');
+        throw new Error("회원탈퇴 처리에 실패했습니다.");
       }
     } catch (error) {
-      console.error('회원탈퇴 오류:', error);
-      alert('회원탈퇴 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
+      console.error("회원탈퇴 오류:", error);
+      alert("회원탈퇴 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
     } finally {
       setIsWithdrawing(false);
     }
@@ -121,9 +129,7 @@ export default function InfoCard({ userName, userId, currentScore, currentGrade,
             <EditButton onClick={handleEdit}>수정</EditButton>
           )}
         </SectionHeader>
-        <InfoDescription>
-          현재 내 회원정보입니다.
-        </InfoDescription>
+        <InfoDescription>현재 내 회원정보입니다.</InfoDescription>
         <InfoContent>
           <InfoRow>
             <InfoLabel>닉네임</InfoLabel>
@@ -141,21 +147,23 @@ export default function InfoCard({ userName, userId, currentScore, currentGrade,
           <InfoRow>
             <InfoLabel>역할</InfoLabel>
             <RoleChangeContainer>
-              <InfoValue>{user?.role || '청년'}</InfoValue>
-              <RoleChangeButton onClick={() => setShowRoleChange(!showRoleChange)}>
+              <InfoValue>{user?.role || "청년"}</InfoValue>
+              <RoleChangeButton
+                onClick={() => setShowRoleChange(!showRoleChange)}
+              >
                 역할 변경
               </RoleChangeButton>
               {showRoleChange && (
                 <RoleButtonGroup>
-                  <RoleButton 
-                    isActive={user?.role === '청년'}
-                    onClick={() => handleRoleChange('청년')}
+                  <RoleButton
+                    isActive={user?.role === "청년"}
+                    onClick={() => handleRoleChange("청년")}
                   >
                     청년
                   </RoleButton>
-                  <RoleButton 
-                    isActive={user?.role === '상인'}
-                    onClick={() => handleRoleChange('상인')}
+                  <RoleButton
+                    isActive={user?.role === "상인"}
+                    onClick={() => handleRoleChange("상인")}
                   >
                     상인
                   </RoleButton>
@@ -207,11 +215,8 @@ export default function InfoCard({ userName, userId, currentScore, currentGrade,
       <InfoSection>
         <SectionHeader>
           <SectionTitle>회원탈퇴</SectionTitle>
-          <WithdrawButton 
-            onClick={handleWithdraw}
-            disabled={isWithdrawing}
-          >
-            {isWithdrawing ? '처리 중...' : '탈퇴'}
+          <WithdrawButton onClick={handleWithdraw} disabled={isWithdrawing}>
+            {isWithdrawing ? "처리 중..." : "탈퇴"}
           </WithdrawButton>
         </SectionHeader>
         <InfoDescription>
@@ -379,37 +384,50 @@ const RoleButton = styled.button<{ isActive: boolean }>`
   padding: 0.75rem 1rem;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background-color: ${props => props.isActive ? colors.blue[500] : 'white'};
-  color: ${props => props.isActive ? 'white' : colors.gray[700]};
-  border: 1px solid ${props => props.isActive ? colors.blue[500] : colors.gray[300]};
-  font-weight: ${props => props.isActive ? '600' : '400'};
+  background-color: ${(props) => (props.isActive ? colors.blue[500] : "white")};
+  color: ${(props) => (props.isActive ? "white" : colors.gray[700])};
+  border: 1px solid
+    ${(props) => (props.isActive ? colors.blue[500] : colors.gray[300])};
+  font-weight: ${(props) => (props.isActive ? "600" : "400")};
   position: relative;
   min-width: 80px;
 
   &:hover {
-    background-color: ${props => props.isActive ? colors.blue[600] : colors.blue[100]};
-    border-color: ${props => props.isActive ? colors.blue[600] : colors.blue[300]};
-    color: ${props => props.isActive ? 'white' : colors.blue[700]};
-    transform: ${props => props.isActive ? 'none' : 'translateY(-1px)'};
-    box-shadow: ${props => props.isActive ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.1)'};
+    background-color: ${(props) =>
+      props.isActive ? colors.blue[600] : colors.blue[100]};
+    border-color: ${(props) =>
+      props.isActive ? colors.blue[600] : colors.blue[300]};
+    color: ${(props) => (props.isActive ? "white" : colors.blue[700])};
+    transform: ${(props) => (props.isActive ? "none" : "translateY(-1px)")};
+    box-shadow: ${(props) =>
+      props.isActive ? "none" : "0 2px 8px rgba(0, 0, 0, 0.1)"};
   }
 
   &:active {
-    transform: ${props => props.isActive ? 'none' : 'translateY(0)'};
-    box-shadow: ${props => props.isActive ? 'none' : '0 1px 4px rgba(0, 0, 0, 0.1)'};
+    transform: ${(props) => (props.isActive ? "none" : "translateY(0)")};
+    box-shadow: ${(props) =>
+      props.isActive ? "none" : "0 1px 4px rgba(0, 0, 0, 0.1)"};
   }
 
   &:first-child {
     border-radius: 0.5rem 0.5rem 0 0;
-    border-bottom: ${props => props.isActive ? `1px solid ${colors.blue[500]}` : `1px solid ${colors.gray[300]}`};
+    border-bottom: ${(props) =>
+      props.isActive
+        ? `1px solid ${colors.blue[500]}`
+        : `1px solid ${colors.gray[300]}`};
   }
 
   &:last-child {
     border-radius: 0 0 0.5rem 0.5rem;
-    border-top: ${props => props.isActive ? `1px solid ${colors.blue[500]}` : `1px solid ${colors.gray[300]}`};
+    border-top: ${(props) =>
+      props.isActive
+        ? `1px solid ${colors.blue[500]}`
+        : `1px solid ${colors.gray[300]}`};
   }
 
-  ${props => props.isActive && `
+  ${(props) =>
+    props.isActive &&
+    `
     &::after {
       content: '✓';
       position: absolute;
@@ -451,7 +469,7 @@ const GoogleInfo = styled.div`
 `;
 
 const GoogleIcon = styled.div`
-  background-color: #4285F4;
+  background-color: #4285f4;
   color: white;
   padding: 0.25rem 0.5rem;
   border-radius: 0.25rem;
