@@ -1,59 +1,70 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
-import Header from "../components/Header";
 import { colors } from "../styles/theme";
 import type { ChatRoom, User } from "../types/userChat";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function ChatListPage() {
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
   
-  // 임시 채팅방 데이터
-  const [chatRooms] = useState<ChatRoom[]>([
-    {
-      id: "1",
-      participants: [
-        { id: "user1", name: "김상인", role: "상인", profileImageUrl: "https://via.placeholder.com/40", isOnline: true },
-        { id: "user2", name: "박청년", role: "청년", profileImageUrl: "https://via.placeholder.com/40", isOnline: false }
-      ],
-      lastMessage: {
-        id: "msg1",
-        senderId: "user1",
-        senderName: "김상인",
-        content: "안녕하세요! 지원서 잘 봤습니다.",
-        createdAt: Date.now() - 1000 * 60 * 30, // 30분 전
-        isRead: false
+  // 임시 채팅방 데이터 (실제로는 API를 통해 가져와야 함)
+  const [chatRooms] = useState<ChatRoom[]>(() => {
+    if (!isAuthenticated || !user) return [];
+    
+    return [
+      {
+        id: "1",
+        participants: [
+          { id: user.id, name: user.name, role: user.role, profileImageUrl: user.profileImageUrl, isOnline: true },
+          { id: "user2", name: "박청년", role: "청년", profileImageUrl: "https://via.placeholder.com/40", isOnline: false }
+        ],
+        lastMessage: {
+          id: "msg1",
+          senderId: user.id,
+          senderName: user.name,
+          content: "안녕하세요! 지원서 잘 봤습니다.",
+          createdAt: Date.now() - 1000 * 60 * 30, // 30분 전
+          isRead: false
+        },
+        unreadCount: 2,
+        createdAt: Date.now() - 1000 * 60 * 60 * 24, // 1일 전
+        updatedAt: Date.now() - 1000 * 60 * 30
       },
-      unreadCount: 2,
-      createdAt: Date.now() - 1000 * 60 * 60 * 24, // 1일 전
-      updatedAt: Date.now() - 1000 * 60 * 30
-    },
-    {
-      id: "2",
-      participants: [
-        { id: "user1", name: "김상인", role: "상인", profileImageUrl: "https://via.placeholder.com/40", isOnline: true },
-        { id: "user3", name: "이청년", role: "청년", profileImageUrl: "https://via.placeholder.com/40", isOnline: true }
-      ],
-      lastMessage: {
-        id: "msg2",
-        senderId: "user3",
-        senderName: "이청년",
-        content: "네, 면접 일정 조율 가능합니다.",
-        createdAt: Date.now() - 1000 * 60 * 5, // 5분 전
-        isRead: true
-      },
-      unreadCount: 0,
-      createdAt: Date.now() - 1000 * 60 * 60 * 2, // 2시간 전
-      updatedAt: Date.now() - 1000 * 60 * 5
-    }
-  ]);
+      {
+        id: "2",
+        participants: [
+          { id: user.id, name: user.name, role: user.role, profileImageUrl: user.profileImageUrl, isOnline: true },
+          { id: "user3", name: "이청년", role: "청년", profileImageUrl: "https://via.placeholder.com/40", isOnline: true }
+        ],
+        lastMessage: {
+          id: "msg2",
+          senderId: "user3",
+          senderName: "이청년",
+          content: "네, 면접 일정 조율 가능합니다.",
+          createdAt: Date.now() - 1000 * 60 * 5, // 5분 전
+          isRead: true
+        },
+        unreadCount: 0,
+        createdAt: Date.now() - 1000 * 60 * 60 * 2, // 2시간 전
+        updatedAt: Date.now() - 1000 * 60 * 5
+      }
+    ];
+  });
+  
+  // 로그인되지 않은 경우 로그인 페이지로 리다이렉트
+  if (!isAuthenticated || !user) {
+    navigate('/login');
+    return null;
+  }
 
   const handleChatRoomClick = (chatRoomId: string) => {
     navigate(`/chat/${chatRoomId}`);
   };
 
   const getOtherParticipant = (chatRoom: ChatRoom): User => {
-    return chatRoom.participants.find(p => p.id !== "user1")!;
+    return chatRoom.participants.find(p => p.id !== user.id)!;
   };
 
   const formatTime = (timestamp: number) => {
@@ -62,13 +73,12 @@ export default function ChatListPage() {
     
     if (diff < 1000 * 60) return "방금 전";
     if (diff < 1000 * 60 * 60) return `${Math.floor(diff / (1000 * 60))}분 전`;
-    if (diff < 1000 * 60 * 60 * 24) return `${Math.floor(diff / (1000 * 60 * 60))}시간 전`;
+    if (diff < 1000 * 60 * 60 * 24) return `${Math.floor(diff / (1000 * 60 * 60))}일 전`;
     return `${Math.floor(diff / (1000 * 60 * 60 * 24))}일 전`;
   };
 
   return (
     <PageContainer>
-      <Header />
       <MainContent>
         <PageTitle>채팅</PageTitle>
         

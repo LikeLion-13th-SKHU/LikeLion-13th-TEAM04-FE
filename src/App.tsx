@@ -12,17 +12,17 @@ import NoticeListPage from "./pages/NoticeListPage";
 import NoticeDetailPage from "./pages/NoticeDetailPage";
 import NoticeCreatePage from "./pages/NoticeCreatePage";
 import MyPage from "./pages/MyPage";
+import OauthCallback from "./pages/OauthCallback";
 
 function AppContent() {
   const location = useLocation();
-  const isMyPage = location.pathname === "/me";
-  const isChatRoom = location.pathname.startsWith("/chat/");
-  const isChatList = location.pathname === "/chat";
 
   return (
     <>
-      {!isMyPage && !isChatRoom && !isChatList && <Header />}
+      <Header />
       <Routes>
+        <Route path="/oauth/callback" element={<OauthCallback />} />
+        <Route path="/oauth2/callback/google" element={<OauthCallback />} />
         <Route path="/" element={<MainPage />} />
         <Route path="/login" element={<LoginPage />} />
 

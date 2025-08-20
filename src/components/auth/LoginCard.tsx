@@ -1,13 +1,34 @@
 import { ReactNode } from "react";
 import styled from "styled-components";
 
+const LoginCard = ({ children }: Props) => {
+  const handleGoogleLogin = () => {
+    const clientId = process.env.REACT_APP_GOOGLE_AUTH_CLIENT_ID;
+    const redirectUri = process.env.REACT_APP_GOOGLE_AUTH_REDIRECT_URI;
+    
+    if (!clientId) {
+      alert('Google Client ID가 설정되지 않았습니다. .env 파일을 확인해주세요.');
+      return;
+    }
+    
+    if (!redirectUri) {
+      alert('Google Redirect URI가 설정되지 않았습니다. .env 파일을 확인해주세요.');
+      return;
+    }
+    
+    const scope = 'email profile';
+    
+    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}`;
+    
+    console.log('Google OAuth URL:', googleAuthUrl);
+    window.location.href = googleAuthUrl;
+  };
 
-const LoginCard = ({ onGoogleClick, children }: Props) => {
   return (
     <Card role="dialog" aria-labelledby="login-title">
       <Title id="login-title">로그인/회원가입</Title>
       <Actions>
-        <GoogleButton onClick={onGoogleClick} aria-label="Google로 시작하기">
+        <GoogleButton onClick={handleGoogleLogin} aria-label="Google로 시작하기">
           <GoogleIcon />
           <span>Google로 시작하기</span>
         </GoogleButton>

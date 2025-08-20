@@ -20,9 +20,12 @@ const Full = styled.main`
 
 export default function LoginPage() {
   const handleGoogle = () => {
-    // 나중에 실제 OAuth 시작 로직 연결
     console.log("구글 로그인 시작");
-    // window.location.href = "/api/auth/google";  // 예시
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?
+		client_id=${process.env.REACT_APP_GOOGLE_AUTH_CLIENT_ID}
+		&redirect_uri=${process.env.REACT_APP_GOOGLE_AUTH_REDIRECT_URI}
+		&response_type=code
+		&scope=email profile`;
   };
 
   return (
