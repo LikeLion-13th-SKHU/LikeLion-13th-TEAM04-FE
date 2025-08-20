@@ -46,7 +46,6 @@ export default function InfoCard({ userName, userId, currentScore, currentGrade,
     if (onNicknameChange && nickname !== userName) {
       onNicknameChange(nickname);
     }
-    console.log("저장된 데이터:", { nickname });
   };
 
   const handleCancel = () => {
@@ -61,12 +60,10 @@ export default function InfoCard({ userName, userId, currentScore, currentGrade,
       // 역할 변경
       await updateUserRole(newRole === '청년' ? 'YOUTH' : 'MERCHANT');
       setShowRoleChange(false);
-      console.log("역할 변경 완료:", newRole);
       
       // 성공 메시지 표시
       alert(`${newRole}으로 역할이 변경되었습니다.`);
     } catch (error) {
-      console.error("역할 변경 실패:", error);
       alert("역할 변경에 실패했습니다. 다시 시도해주세요.");
     }
   };

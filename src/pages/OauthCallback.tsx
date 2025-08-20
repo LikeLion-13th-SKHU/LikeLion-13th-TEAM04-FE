@@ -35,32 +35,19 @@ export default function OauthCallback() {
           return;
         }
 
-        console.log('Google OAuth Code received:', code);
-        
         const redirectUri = process.env.REACT_APP_GOOGLE_AUTH_REDIRECT_URI;
         if (!redirectUri) {
           throw new Error('Google Redirect URI가 설정되지 않았습니다.');
         }
-        
-        console.log('Redirect URI:', redirectUri);
-        console.log('code', code);
 
         // 백엔드 API로 인증 코드 전송
         const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
-        console.log("apiBaseUrl", apiBaseUrl)
         const response = await axios.get(`${apiBaseUrl}/login/oauth2/code/google?code=${code}`);
         if (response.status !== 200) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         const data = response.data;
-        console.log('Backend response:', data);
-        console.log('User data structure:', {
-          userId: data.userId,
-          id: data.id,
-          user: data.user,
-          hasRole: data.hasRole
-        });
         
         setUserDataState(data);
         
@@ -89,7 +76,6 @@ export default function OauthCallback() {
         }
 
       } catch (error: any) {
-        console.error('OAuth callback error:', error);
         setStatus('error');
         setErrorMessage('로그인 처리 중 오류가 발생했습니다.');
       }
@@ -134,7 +120,6 @@ export default function OauthCallback() {
         }, 1500);
       }
     } catch (error: any) {
-      console.error('Role saving error:', error);
       setStatus('error');
       setErrorMessage('역할 저장 중 오류가 발생했습니다.');
     } finally {

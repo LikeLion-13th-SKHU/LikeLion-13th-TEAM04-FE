@@ -19,9 +19,7 @@ const LoginCard = ({ children }: Props) => {
     const scope = 'email profile';
     
     const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}`;
-    
-    console.log('Google OAuth URL:', googleAuthUrl);
-    window.location.href = googleAuthUrl;
+      window.location.href = googleAuthUrl;
   };
 
   return (

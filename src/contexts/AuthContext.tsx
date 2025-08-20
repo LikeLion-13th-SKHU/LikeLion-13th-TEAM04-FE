@@ -37,9 +37,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // 문자열인 경우 JSON.stringify 사용하지 않음
         const dataToSave = typeof value === 'string' ? value : JSON.stringify(value);
         localStorage.setItem(dataKey, dataToSave);
-        console.log(`사용자 데이터 저장 완료: ${key} =`, value);
       } catch (error) {
-        console.error(`사용자 데이터 저장 실패: ${key}`, error);
+        // 에러 처리만 유지
       }
     }
   };
@@ -60,7 +59,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           return savedData;
         }
       } catch (error) {
-        console.error(`사용자 데이터 불러오기 실패: ${key}`, error);
         return null;
       }
     }
@@ -83,7 +81,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // 찾은 키들 삭제
     keysToRemove.forEach(key => {
       localStorage.removeItem(key);
-      console.log(`사용자 데이터 삭제: ${key}`);
     });
   };
 
@@ -113,9 +110,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         setUser(userInfo);
         setAccessToken(savedToken);
-        console.log('저장된 사용자 정보 복원 완료:', userInfo);
       } catch (error) {
-        console.error('Failed to parse saved user info:', error);
         // 파싱 실패 시 localStorage 정리
         localStorage.removeItem('accessToken');
         localStorage.removeItem('userInfo');
@@ -153,7 +148,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       saveUserData('role', finalRole);
     }
     
-    console.log('로그인 완료:', userInfo);
   };
 
   const logout = () => {
@@ -166,13 +160,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     setUser(null);
     setAccessToken(null);
-    console.log('로그아웃 완료');
   };
 
   const updateUser = (updatedUser: User) => {
     setUser(updatedUser);
     localStorage.setItem('userInfo', JSON.stringify(updatedUser));
-    console.log('사용자 정보 업데이트 완료:', updatedUser);
   };
 
   const updateUserNickname = (newNickname: string) => {
@@ -185,7 +177,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     localStorage.setItem('userInfo', JSON.stringify(updatedUser));
     saveUserData('nickname', newNickname);
     
-    console.log('닉네임 업데이트 완료:', newNickname);
   };
 
   const updateUserRole = async (newRole: string) => {
@@ -213,14 +204,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // localStorage에 저장
         localStorage.setItem('userInfo', JSON.stringify(updatedUser));
         saveUserData('role', newRole);
-        
-        console.log('역할 업데이트 완료:', newRole);
       } else {
-        console.error('역할 업데이트 실패:', response.status);
         throw new Error('역할 업데이트에 실패했습니다.');
       }
     } catch (error) {
-      console.error('역할 업데이트 중 오류:', error);
       throw error;
     }
   };
