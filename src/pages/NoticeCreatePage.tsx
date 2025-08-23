@@ -2,15 +2,29 @@ import styled from "styled-components";
 import { colors } from "../styles/theme";
 import { useMemo, useRef, useState } from "react";
 import type { NoticeCategory } from "../types/notice";
+import { createPost } from "../api/posts";
+
 import { useNavigate } from "react-router-dom";
 
 const categories: NoticeCategory[] = [
-  "디자인",
-  "개발",
-  "영상",
-  "마케팅",
-  "기타",
+  "CAFE",
+  "RESTAURANT",
+  "SUPERMARKET",
+  "LIFE",
+  "EDUCATION",
+  "CULTURE",
+  "ADD",
 ];
+
+const categoryLabelMap: Record<NoticeCategory, string> = {
+  CAFE: "카페",
+  RESTAURANT: "음식점",
+  SUPERMARKET: "마트",
+  LIFE: "생활",
+  EDUCATION: "교육",
+  CULTURE: "문화",
+  ADD: "기타",
+};
 
 const NoticeCreatePage = () => {
   const navigate = useNavigate();
@@ -27,6 +41,14 @@ const NoticeCreatePage = () => {
   const [description, setDescription] = useState<string>("");
   const [files, setFiles] = useState<File[]>([]);
   const [recruitEnd, setRecruitEnd] = useState<string>("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const formatDateIso = (d: Date) => {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`; // Spring LocalDate 기본 포맷
+  };
 
   const previews = useMemo(
     () => files.map((f) => URL.createObjectURL(f)),
@@ -47,28 +69,59 @@ const NoticeCreatePage = () => {
     setFiles((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = {
-      category,
-      region,
-      title,
-      pay: Number(pay || 0),
-      headcount: Number(headcount || 0),
-      workHours,
-      workPeriod: { start: workStart, end: workEnd },
-      tags: tags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean),
-      description,
-      filesCount: files.length,
-      recruitEnd,
-    };
-    // 실제 API 연동 대신 콘솔로 확인
-    // eslint-disable-next-line no-console
-    console.log("submit notice", payload);
-    navigate("/notices");
+    if (submitting) return;
+
+    const t = title.trim();
+    const c = description.trim();
+    const loc = region.trim();
+    const wt = workHours.trim();
+
+    if (!category || !t || !c || !loc || !wt) {
+      alert(
+        "필수 항목(카테고리, 제목, 내용, 위치, 일하는 시간)을 입력해 주세요."
+      );
+      return;
+    }
+    if (c.length < 10) {
+      alert("내용은 최소 10자 이상 작성해 주세요.");
+      return;
+    }
+    if ((workStart && !workEnd) || (!workStart && workEnd)) {
+      alert("근무 기간 시작/종료를 모두 선택해 주세요.");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const work_period = `${workStart}~${workEnd}`;
+      const image = files[0] ?? null;
+
+      await createPost({
+        category: category as NoticeCategory,
+        title: t,
+        content: c,
+        location: loc,
+        salary: pay ? Number(pay) : undefined,
+        work_time: wt,
+        deadline: recruitEnd || undefined,
+        num: headcount ? Number(headcount) : undefined,
+        work_period,
+        tags,
+        image,
+        createAt: formatDateIso(new Date()),
+      });
+
+      alert("공고가 등록되었습니다.");
+      navigate("/notices");
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message || err?.message || "등록에 실패했습니다.";
+      alert(message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const onCancel = () => navigate("/notices");
@@ -83,12 +136,12 @@ const NoticeCreatePage = () => {
             <Field>
               <Select
                 value={category}
-                onChange={(e) => setCategory(e.target.value as any)}
+                onChange={(e) => setCategory(e.target.value as NoticeCategory)}
               >
                 <option value="">선택</option>
                 {categories.map((c) => (
                   <option key={c} value={c}>
-                    {c}
+                    {categoryLabelMap[c]}
                   </option>
                 ))}
               </Select>
@@ -235,7 +288,9 @@ const NoticeCreatePage = () => {
             <CancelButton type="button" onClick={onCancel}>
               취소
             </CancelButton>
-            <SubmitButton type="submit">작성하기</SubmitButton>
+            <SubmitButton type="submit" disabled={submitting}>
+              {submitting ? "등록 중..." : "작성하기"}
+            </SubmitButton>
           </Actions>
         </Form>
       </Container>

@@ -1,4 +1,11 @@
-export type NoticeCategory = "디자인" | "개발" | "영상" | "마케팅" | "기타";
+export type NoticeCategory =
+  | "CAFE"
+  | "RESTAURANT"
+  | "SUPERMARKET"
+  | "LIFE"
+  | "EDUCATION"
+  | "CULTURE"
+  | "ADD";
 
 export interface NoticePost {
   id: string;
@@ -15,4 +22,50 @@ export interface NoticePost {
   workHours?: string; // 예: "10:00~18:00"
   description?: string;
   logoUrl?: string;
+}
+
+export interface BackendPostItem {
+  post_id: number;
+  title: string;
+  location: string;
+  salary: number;
+  createAt: string;
+}
+
+export interface BackendPaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalCount: number;
+  pageSize: number;
+}
+
+export interface BackendPostsResponse {
+  success: boolean;
+  code: string;
+  message: string;
+  data: {
+    posts: BackendPostItem[];
+    pagination: BackendPaginationInfo;
+  };
+}
+
+export interface BackendPostDetailData {
+  title: string;
+  content: string;
+  location: string;
+  salary: number;
+  work_time: string;
+  tags: string;
+  deadline: string; // 2025.07.25
+  num: number; // headcount
+  work_period: string; // 2025.07.27~2025.07.28
+  createAt: string; // 2025.07.20
+  category: string; // 예: 카페
+}
+
+export interface BackendPostDetailResponse {
+  success: boolean;
+  code: string;
+  message: string;
+  data: BackendPostDetailData;
 }
