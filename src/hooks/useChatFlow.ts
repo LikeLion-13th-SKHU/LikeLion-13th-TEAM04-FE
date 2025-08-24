@@ -59,6 +59,63 @@ export const useChatFlow = (): UseChatFlowResult => {
     ]);
   }, []);
 
+  // 봇 답변이 "추천 후보"로 시작하면 텍스트 말풍선 생략
+  const pushBotReply = useCallback(
+    (reply: string) => {
+      const trimmed = (reply || "").trim();
+      if (trimmed.startsWith("추천 후보")) return;
+      pushText("bot", reply);
+    },
+    [pushText]
+  );
+
+  const pushRecommendations = useCallback(
+    (role: "bot" | "user", recs: Recommendation[]) => {
+      if (!recs || recs.length === 0) return;
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role,
+          kind: "recommendations",
+          recommendations: recs,
+          createdAt: Date.now(),
+        },
+      ]);
+    },
+    []
+  );
+
+  const mapResultsToRecommendations = useCallback(
+    (results: any[]): Recommendation[] => {
+      return (results || []).map((r: any, idx: number) => {
+        const profile: string = String(r.profile || "");
+        const tokens = profile.split(",").map((s) => s.trim());
+        const region = tokens.find((t) => /시|구|동/.test(t)) || "";
+        const availability =
+          tokens.find((t) => /(오전|오후|야간|주|주말|평일|상시)/.test(t)) ||
+          "";
+        const genderRaw = String(r.gender || "");
+        const gender =
+          genderRaw === "남성" || genderRaw === "여성" ? genderRaw : "무관";
+        const matchRate = typeof r.score === "number" ? r.score : 0;
+        const title = r.job || r.skills || tokens[0] || "추천";
+        return {
+          id: String(r.id ?? idx),
+          name: String(r.name || "이름 미상"),
+          age: 0,
+          gender,
+          title: String(title),
+          availability: String(availability),
+          region: String(region),
+          experience: undefined,
+          matchRate,
+        } as Recommendation;
+      });
+    },
+    []
+  );
+
   // 역할(청년/상인) 선택 시 실행
   const selectRole = useCallback(
     (nextRole: SelectedRole) => {
@@ -86,20 +143,20 @@ export const useChatFlow = (): UseChatFlowResult => {
             text: nextRole,
           });
 
-          pushText("bot", ai.data.reply);
-          if (ai.data.results && ai.data.results.length > 0) {
-            // 결과가 오면 추천 리스트로 렌더 (현재는 any[]라 단순 문자열화)
-            pushText(
-              "bot",
-              Array.isArray(ai.data.results)
-                ? ai.data.results.map((r) => JSON.stringify(r)).join("\n")
-                : String(ai.data.results)
-            );
-          }
+          pushBotReply(ai.data.reply);
+          const recs = mapResultsToRecommendations(ai.data.results);
+          pushRecommendations("bot", recs);
         } catch (e: any) {}
       })();
     },
-    [role, pushText, roomId, user]
+    [
+      role,
+      roomId,
+      user,
+      mapResultsToRecommendations,
+      pushRecommendations,
+      pushBotReply,
+    ]
   );
 
   // 입력 전송 버튼 클릭 시 실행
@@ -123,15 +180,10 @@ export const useChatFlow = (): UseChatFlowResult => {
         setRoomId(currentRoomId);
       }
       const ai = await sendAiChat({ roomId: currentRoomId, userId: my, text });
-      pushText("bot", ai.data.reply);
-      if (ai.data.results && ai.data.results.length > 0) {
-        pushText(
-          "bot",
-          Array.isArray(ai.data.results)
-            ? ai.data.results.map((r) => JSON.stringify(r)).join("\n")
-            : String(ai.data.results)
-        );
-      }
+      pushBotReply(ai.data.reply);
+
+      const recs = mapResultsToRecommendations(ai.data.results);
+      pushRecommendations("bot", recs);
     } catch (e: any) {
       setError(e.message || "메시지 전송에 실패했습니다.");
     }
@@ -141,7 +193,16 @@ export const useChatFlow = (): UseChatFlowResult => {
       : "";
     summaryTextRef.current = summaryText;
     setSummaryReady(summaryText.length > 0);
-  }, [canSend, input, pushText, roomId, user]);
+  }, [
+    canSend,
+    input,
+    pushText,
+    roomId,
+    user,
+    mapResultsToRecommendations,
+    pushRecommendations,
+    pushBotReply,
+  ]);
 
   const showSummary = useCallback(() => {
     if (!summaryTextRef.current) {
@@ -183,7 +244,7 @@ export const useChatFlow = (): UseChatFlowResult => {
 
       const res = await sendAiChat({
         roomId:
-          roomId ??
+          roomId ||
           (await (async () => {
             const tmp = await createChatRoom();
             return tmp.data.roomId;
@@ -192,22 +253,24 @@ export const useChatFlow = (): UseChatFlowResult => {
         text,
       });
 
-      pushText("bot", res.data.reply);
-      if (res.data.results && res.data.results.length > 0) {
-        pushText(
-          "bot",
-          Array.isArray(res.data.results)
-            ? res.data.results.map((r) => JSON.stringify(r)).join("\n")
-            : String(res.data.results)
-        );
-      }
+      pushBotReply(res.data.reply);
+      const recs = mapResultsToRecommendations(res.data.results);
+      pushRecommendations("bot", recs);
       setSummaryReady(false);
     } catch (e: any) {
       setError(e.message || "전송 중 오류가 발생했습니다.");
     } finally {
       setSending(false);
     }
-  }, [role, roomId, pushText, user]);
+  }, [
+    role,
+    roomId,
+    pushText,
+    user,
+    mapResultsToRecommendations,
+    pushRecommendations,
+    pushBotReply,
+  ]);
 
   const reset = useCallback(() => {
     setRole(null);
@@ -224,10 +287,11 @@ export const useChatFlow = (): UseChatFlowResult => {
     setTemplateVisible((v) => !v);
   }, []);
 
-  // 초기 로드 시 방 생성 및 인사로 대화 시작
+  // 초기 로드 시 방 생성 및 인사로 대화 시작 (중복 호출 방지)
   useEffect(() => {
-    if (initializedRef.current) return;
     if (!user) return;
+    if (initializedRef.current) return;
+    initializedRef.current = true;
 
     (async () => {
       try {
@@ -252,16 +316,9 @@ export const useChatFlow = (): UseChatFlowResult => {
           text: INITIAL_HELLO,
         });
 
-        pushText("bot", ai.data.reply);
-        if (ai.data.results && ai.data.results.length > 0) {
-          pushText(
-            "bot",
-            Array.isArray(ai.data.results)
-              ? ai.data.results.map((r) => JSON.stringify(r)).join("\n")
-              : String(ai.data.results)
-          );
-        }
-        initializedRef.current = true;
+        pushBotReply(ai.data.reply);
+        const recs = mapResultsToRecommendations(ai.data.results);
+        pushRecommendations("bot", recs);
       } catch {}
     })();
   }, [user]);
