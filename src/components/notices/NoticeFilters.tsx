@@ -1,42 +1,39 @@
 import styled from "styled-components";
 import { colors } from "../../styles/theme";
-import type { NoticeCategory } from "../../types/notice";
 
 export interface NoticeFiltersProps {
-  region: string;
-  category: NoticeCategory | "전체";
-  regions: string[];
-  categories: NoticeCategory[];
-  onChangeRegion: (region: string) => void;
-  onChangeCategory: (category: NoticeCategory | "전체") => void;
+  category: string;
+  categories: string[];
+  onChangeCategory: (category: string) => void;
 }
 
 const NoticeFilters = ({
-  region,
   category,
-  regions,
   categories,
-  onChangeRegion,
   onChangeCategory,
 }: NoticeFiltersProps) => {
+  // 한글 라벨 매핑
+  const labelMap: Record<string, string> = {
+    ALL: "전체",
+    CAFE: "카페",
+    RESTAURANT: "음식점",
+    SUPERMARKET: "마트",
+    LIFE: "생활",
+    EDUCATION: "교육",
+    CULTURE: "문화",
+    ADD: "기타",
+  };
+
   return (
     <Filters>
-      <Select value={region} onChange={(e) => onChangeRegion(e.target.value)}>
-        {regions.map((r) => (
-          <option key={r} value={r}>
-            {r}
-          </option>
-        ))}
-      </Select>
-
       <Select
         value={category}
-        onChange={(e) => onChangeCategory(e.target.value as any)}
+        onChange={(e) => onChangeCategory(e.target.value)}
       >
-        <option value="전체">카테고리</option>
+        <option value="ALL">전체</option>
         {categories.map((c) => (
           <option key={c} value={c}>
-            {c}
+            {labelMap[c] || c}
           </option>
         ))}
       </Select>

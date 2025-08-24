@@ -1,81 +1,119 @@
 import styled from "styled-components";
 import { colors } from "../styles/theme";
-import type { NoticePost, NoticeCategory } from "../types/notice";
-import { useMemo } from "react";
-import { Link } from "react-router-dom";
+import type { NoticePost } from "../types/notice";
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { getPostDetail } from "../api/posts";
 
-// 간단한 목업 데이터: 실제에선 API/상태관리로 대체
-const MOCK_DETAIL: NoticePost = {
-  id: "1",
-  region: "서울시 노원구",
-  title: "수작카츠 역곡점 30초 홍보 영상 제작팀 모집",
-  pay: 300000,
-  createdAt: "2025.7.25",
-  category: "영상" as NoticeCategory,
-  headcount: 1,
-  deadline: "2025/08/01",
-  workPeriodStart: "2025/08/02",
-  workPeriodEnd: "2025/08/26",
-  workHours: "-",
-  description:
-    "안녕하세요 수작카츠 역곡점입니다. 저희는 30초 홍보 영상을 제작해 주실 인재를 찾고 있습니다. 편집 기술을 보유하고 계신 대학생분들 환영입니다.",
-  logoUrl: "https://dummyimage.com/400x240/ffffff/2142ab.png&text=SUZAK+KATSU",
-};
+// 목업 제거, 실제 API 사용
 
 const NoticeDetailPage = () => {
-  const data = useMemo(() => MOCK_DETAIL, []);
+  const { id } = useParams();
+  const [data, setData] = useState<NoticePost | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        if (!id) throw new Error("잘못된 접근입니다.");
+        const res = await getPostDetail(id);
+        const d = res.data;
+        const mapped: NoticePost = {
+          id: String(id),
+          region: d.location,
+          title: d.title,
+          pay: d.salary,
+          createdAt: d.createAt,
+          category: (d.category as any) || "기타",
+          headcount: d.num,
+          deadline: d.deadline,
+          workPeriodStart: d.work_period?.split("~")[0]?.trim(),
+          workPeriodEnd: d.work_period?.split("~")[1]?.trim(),
+          workHours: d.work_time,
+          description: d.content,
+          logoUrl: undefined,
+        };
+        if (!cancelled) setData(mapped);
+      } catch (e: any) {
+        if (!cancelled) setError(e.message || "불러오기에 실패했습니다.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   return (
     <PageRoot>
       <Container>
         <BackOverlayLink to="/notices">목록으로</BackOverlayLink>
         <HeaderArea>
-          <Logo src={data.logoUrl} alt="업체 로고" />
+          {data?.logoUrl ? (
+            <Logo src={data.logoUrl} alt="업체 로고" />
+          ) : (
+            <LogoPlaceholder />
+          )}
         </HeaderArea>
 
-        <CategoryBadge>{data.category} 모집</CategoryBadge>
-        <Title>{data.title}</Title>
+        {loading && <Loading>불러오는 중...</Loading>}
+        {error && <ErrorText>{error}</ErrorText>}
+        {!loading && !error && data && (
+          <>
+            <CategoryBadge>
+              {(data.category ?? "기타") as string} 모집
+            </CategoryBadge>
+            <Title>{data.title}</Title>
 
-        <Grid>
-          <Row>
-            <Key>모집 마감</Key>
-            <Val>
-              {formatDate(data.deadline)} <Due>D-4</Due>
-            </Val>
-          </Row>
-          <Row>
-            <Key>급여</Key>
-            <Val>{data.pay.toLocaleString()}원</Val>
-          </Row>
-          <Row>
-            <Key>모집 인원</Key>
-            <Val>{data.headcount ?? "-"}명</Val>
-          </Row>
-          <Row>
-            <Key>근무 기간</Key>
-            <Val>
-              {formatDate(data.workPeriodStart)} ~{" "}
-              {formatDate(data.workPeriodEnd)}
-            </Val>
-          </Row>
-          <Row>
-            <Key>근무 시간</Key>
-            <Val>{data.workHours ?? "-"}</Val>
-          </Row>
-          <Row>
-            <Key>근무 지역</Key>
-            <Val>{data.region}</Val>
-          </Row>
-        </Grid>
+            <Grid>
+              <Row>
+                <Key>모집 마감</Key>
+                <Val>
+                  {formatDate(data?.deadline)}{" "}
+                  <Due>{formatDday(data?.deadline)}</Due>
+                </Val>
+              </Row>
+              <Row>
+                <Key>급여</Key>
+                <Val>{Number(data?.pay || 0).toLocaleString()}원</Val>
+              </Row>
+              <Row>
+                <Key>모집 인원</Key>
+                <Val>{data?.headcount ?? "-"}명</Val>
+              </Row>
+              <Row>
+                <Key>근무 기간</Key>
+                <Val>
+                  {formatDate(data?.workPeriodStart)} ~{" "}
+                  {formatDate(data?.workPeriodEnd)}
+                </Val>
+              </Row>
+              <Row>
+                <Key>근무 시간</Key>
+                <Val>{data?.workHours ?? "-"}</Val>
+              </Row>
+              <Row>
+                <Key>근무 지역</Key>
+                <Val>{data?.region}</Val>
+              </Row>
+            </Grid>
 
-        <Section>
-          <SectionTitle>상세 요강</SectionTitle>
-          <Paragraph>{data.description}</Paragraph>
-        </Section>
+            <Section>
+              <SectionTitle>상세 요강</SectionTitle>
+              <Paragraph>{data?.description}</Paragraph>
+            </Section>
 
-        <Actions>
-          <ApplyButton type="button">지원하기</ApplyButton>
-        </Actions>
+            <Actions>
+              <ApplyButton type="button">지원하기</ApplyButton>
+            </Actions>
+          </>
+        )}
       </Container>
     </PageRoot>
   );
@@ -84,6 +122,33 @@ const NoticeDetailPage = () => {
 export default NoticeDetailPage;
 
 const formatDate = (s?: string) => (s ? s.replaceAll("-", "/") : "-");
+
+const formatDday = (deadline?: string) => {
+  if (!deadline) return "-";
+  // 허용 포맷: YYYY.MM.DD 또는 YYYY-MM-DD
+  const norm = deadline.includes(".")
+    ? deadline.replaceAll(".", "-")
+    : deadline;
+  const target = new Date(norm);
+  if (isNaN(target.getTime())) return "-";
+  const today = new Date();
+  // 자정 기준 계산
+  const start = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  );
+  const end = new Date(
+    target.getFullYear(),
+    target.getMonth(),
+    target.getDate()
+  );
+  const diffMs = end.getTime() - start.getTime();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays > 0) return `D-${diffDays}`;
+  if (diffDays === 0) return "D-DAY";
+  return `마감`; // 지났을 때
+};
 
 const PageRoot = styled.main`
   display: block;
@@ -111,6 +176,15 @@ const Logo = styled.img`
   max-width: 24rem;
   width: 100%;
   height: auto;
+`;
+
+const LogoPlaceholder = styled.div`
+  max-width: 24rem;
+  width: 100%;
+  height: 12rem;
+  background: ${colors.gray[100]};
+  border: 1px solid ${colors.blue[300]};
+  border-radius: 0.5rem;
 `;
 
 const BackOverlayLink = styled(Link)`
@@ -203,4 +277,13 @@ const ApplyButton = styled.button`
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+`;
+
+const Loading = styled.div`
+  margin: 0.5rem 0 1rem;
+`;
+
+const ErrorText = styled.div`
+  color: ${colors.red?.[600] || "#dc2626"};
+  margin: 0.5rem 0 1rem;
 `;
