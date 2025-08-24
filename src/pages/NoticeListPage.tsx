@@ -28,11 +28,11 @@ const NoticeListPage = () => {
   const initialSize = Number(searchParams.get("size") || DEFAULT_SIZE);
   const initialQ = searchParams.get("q") || "";
 
-  const initialCategory = (searchParams.get("category") as string) || "";
+  const initialCategory = (searchParams.get("category") as string) || "ALL";
 
   const [q, setQ] = useState<string>(initialQ);
 
-  const [category, setCategory] = useState<string>(initialCategory);
+  const [category, setCategory] = useState<string>(initialCategory || "ALL");
   const [page, setPage] = useState<number>(initialPage);
   const [size] = useState<number>(initialSize);
   const [loading, setLoading] = useState(false);
@@ -64,7 +64,7 @@ const NoticeListPage = () => {
       try {
         const res = await getPosts({
           keyword: q || undefined,
-          category: category || undefined,
+          category: category,
           page,
           size,
           sort: "createAt,desc",

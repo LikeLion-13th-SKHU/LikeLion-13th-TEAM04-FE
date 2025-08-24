@@ -14,6 +14,7 @@ const NoticeFilters = ({
 }: NoticeFiltersProps) => {
   // 한글 라벨 매핑
   const labelMap: Record<string, string> = {
+    ALL: "전체",
     CAFE: "카페",
     RESTAURANT: "음식점",
     SUPERMARKET: "마트",
@@ -29,7 +30,7 @@ const NoticeFilters = ({
         value={category}
         onChange={(e) => onChangeCategory(e.target.value)}
       >
-        <option value="">전체</option>
+        <option value="ALL">전체</option>
         {categories.map((c) => (
           <option key={c} value={c}>
             {labelMap[c] || c}

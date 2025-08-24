@@ -23,8 +23,11 @@ export const getPosts = async ({
     size,
   };
 
-  if (keyword) params.keyword = keyword;
-  if (category) params.category = category;
+  const trimmed = (keyword || "").trim();
+  if (trimmed.length > 0) params.keyword = trimmed;
+
+  params.category = category;
+
   if (sort) params.sort = sort;
 
   const res = await axiosInstance.get<BackendPostsResponse>(`/posts`, {
