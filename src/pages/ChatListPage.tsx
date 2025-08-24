@@ -2,15 +2,14 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import { colors } from "../styles/theme";
-import type { ChatRoom, User } from "../types/userChat";
 import { useAuth } from "../contexts/AuthContext";
-import { axiosInstance } from "../utils/apiConfig";
+import { getChatRooms, type ChatRoomItem } from "../api/chat";
 
 export default function ChatListPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   
-  const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
+  const [chatRooms, setChatRooms] = useState<ChatRoomItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,15 +22,16 @@ export default function ChatListPage() {
         setIsLoading(true);
         setError(null);
         
-        const response = await axiosInstance.get('/chat/rooms');
+        const response = await getChatRooms();
         
-        if (response.status === 200) {
-          setChatRooms(response.data.content || response.data || []);
+        if (response.success) {
+          setChatRooms(response.data || []);
+        } else {
+          setError(response.message || '채팅방을 불러오는데 실패했습니다.');
+          setChatRooms([]);
         }
       } catch (error) {
-        console.error('채팅방 가져오기 오류:', error);
         setError('채팅방을 불러오는데 실패했습니다.');
-        // 에러 발생 시 빈 배열로 설정
         setChatRooms([]);
       } finally {
         setIsLoading(false);
@@ -47,21 +47,22 @@ export default function ChatListPage() {
     return null;
   }
 
-  const handleChatRoomClick = (chatRoomId: string) => {
+  const handleChatRoomClick = (chatRoomId: number) => {
     navigate(`/chat/${chatRoomId}`);
   };
 
-  const getOtherParticipant = (chatRoom: ChatRoom): User => {
-    return chatRoom.participants.find(p => p.id !== user.id)!;
+  const getOtherParticipantId = (chatRoom: ChatRoomItem): number => {
+    return chatRoom.creatorId === user.memberId ? chatRoom.participantId : chatRoom.creatorId;
   };
 
-  const formatTime = (timestamp: number) => {
-    const now = Date.now();
-    const diff = now - timestamp;
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
     
     if (diff < 1000 * 60) return "방금 전";
     if (diff < 1000 * 60 * 60) return `${Math.floor(diff / (1000 * 60))}분 전`;
-    if (diff < 1000 * 60 * 60 * 24) return `${Math.floor(diff / (1000 * 60 * 60))}일 전`;
+    if (diff < 1000 * 60 * 60 * 24) return `${Math.floor(diff / (1000 * 60 * 60))}시간 전`;
     return `${Math.floor(diff / (1000 * 60 * 60 * 24))}일 전`;
   };
 
@@ -90,31 +91,27 @@ export default function ChatListPage() {
         ) : (
           <ChatRoomList>
             {chatRooms.map((chatRoom) => {
-              const otherUser = getOtherParticipant(chatRoom);
+              const otherUserId = getOtherParticipantId(chatRoom);
               return (
                 <ChatRoomItem 
                   key={chatRoom.id}
                   onClick={() => handleChatRoomClick(chatRoom.id)}
                 >
                   <UserAvatar>
-                    <AvatarImage src={otherUser.profileImageUrl} alt={otherUser.name} />
-                    <OnlineIndicator $isOnline={otherUser.isOnline || false} />
+                    <AvatarImage src="/default-avatar.png" alt="사용자" />
+                    <OnlineIndicator $isOnline={false} />
                   </UserAvatar>
                   
                   <ChatRoomInfo>
                     <ChatRoomHeader>
-                      <UserName>{otherUser.name}</UserName>
-                      <LastMessageTime>{formatTime(chatRoom.updatedAt)}</LastMessageTime>
+                      <UserName>{chatRoom.name || `채팅방 ${chatRoom.id}`}</UserName>
+                      <LastMessageTime>{formatTime(chatRoom.createdAt)}</LastMessageTime>
                     </ChatRoomHeader>
                     
                     <LastMessage>
-                      {chatRoom.lastMessage?.content || "새로운 채팅방입니다"}
+                      {chatRoom.postId ? `공고글 #${chatRoom.postId} 관련 채팅` : "새로운 채팅방입니다"}
                     </LastMessage>
                   </ChatRoomInfo>
-                  
-                  {chatRoom.unreadCount > 0 && (
-                    <UnreadBadge>{chatRoom.unreadCount}</UnreadBadge>
-                  )}
                 </ChatRoomItem>
               );
             })}

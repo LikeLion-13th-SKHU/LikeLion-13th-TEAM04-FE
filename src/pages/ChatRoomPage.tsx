@@ -57,13 +57,12 @@ export default function ChatRoomPage() {
         }
         
         // 메시지 가져오기
-        const messagesResponse = await axiosInstance.get(`/chat/rooms/${chatRoomId}/messages`);
-        
+          const messagesResponse = await axiosInstance.get(`/chat/rooms/${chatRoomId}/messages`);
+          
         if (messagesResponse.status === 200) {
           setMessages(messagesResponse.data.content || messagesResponse.data || []);
         }
       } catch (error) {
-        console.error('채팅방 데이터 가져오기 오류:', error);
         
         // 더 자세한 에러 메시지
         let errorMessage = '채팅방을 불러오는데 실패했습니다.';

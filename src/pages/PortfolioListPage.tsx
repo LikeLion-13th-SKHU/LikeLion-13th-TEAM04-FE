@@ -67,24 +67,8 @@ export default function PortfolioListPage() {
         
         const response = await axiosInstance.get('/api/portfolios/search');
         
-        console.log('포트폴리오 API 응답:', response);
-        console.log('응답 데이터:', response.data);
-        
         if (response.status === 200) {
           const portfolioData = response.data.content || response.data || [];
-          console.log('설정할 포트폴리오 데이터:', portfolioData);
-          
-          // 첫 번째 포트폴리오의 상세 내용 확인
-          if (portfolioData.length > 0) {
-            console.log('첫 번째 포트폴리오 상세:', portfolioData[0]);
-            console.log('첫 번째 포트폴리오의 모든 키:', Object.keys(portfolioData[0]));
-            console.log('새 필드들 값:');
-            console.log('- category:', portfolioData[0].category);
-            console.log('- skills:', portfolioData[0].skills);
-            console.log('- experience:', portfolioData[0].experience);
-            console.log('- hourlyRate:', portfolioData[0].hourlyRate);
-            console.log('- availableTime:', portfolioData[0].availableTime);
-          }
           
           setPortfolios(portfolioData);
           setFilteredPortfolios(portfolioData); // 초기 필터링된 목록 설정

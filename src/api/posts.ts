@@ -62,6 +62,8 @@ export interface CreatePostPayload {
 export const createPost = async (payload: CreatePostPayload) => {
   const form = new FormData();
 
+
+
   form.append("category", payload.category);
   form.append("title", payload.title);
   form.append("content", payload.content);

@@ -128,7 +128,6 @@ export default function PortfolioCreateView({ testUser, onClose }: PortfolioCrea
       const response = await axiosInstance.delete(`/api/portfolios/${deletingPortfolio.portfolioId}`);
 
       if (response.status === 200) {
-        console.log('포트폴리오 삭제 성공:', response.data);
         alert('포트폴리오가 성공적으로 삭제되었습니다!');
         
         // 삭제 확인 다이얼로그 닫기
@@ -137,8 +136,7 @@ export default function PortfolioCreateView({ testUser, onClose }: PortfolioCrea
         // 포트폴리오 목록 새로고침
         fetchPortfolios();
       }
-    } catch (error: any) {
-      console.error('포트폴리오 삭제 실패:', error);
+          } catch (error: any) {
       
       let errorMessage = '포트폴리오 삭제에 실패했습니다.';
       if (error.response?.status === 400) {
@@ -186,7 +184,6 @@ export default function PortfolioCreateView({ testUser, onClose }: PortfolioCrea
       const response = await axiosInstance.put(`/api/portfolios/${editingPortfolio.portfolioId}`, updateData);
 
       if (response.status === 200) {
-        console.log('포트폴리오 수정 성공:', response.data);
         alert('포트폴리오가 성공적으로 수정되었습니다!');
         
         // 수정 모드 종료
@@ -196,7 +193,6 @@ export default function PortfolioCreateView({ testUser, onClose }: PortfolioCrea
         fetchPortfolios();
       }
     } catch (error: any) {
-      console.error('포트폴리오 수정 실패:', error);
       
       let errorMessage = '포트폴리오 수정에 실패했습니다.';
       if (error.response?.status === 400) {
@@ -229,7 +225,6 @@ export default function PortfolioCreateView({ testUser, onClose }: PortfolioCrea
         setPortfolios(response.data.content || []);
       }
     } catch (error: any) {
-      console.error('포트폴리오 목록 가져오기 실패:', error);
       
       let errorMessage = '포트폴리오 목록을 불러오는데 실패했습니다.';
       if (error.response?.status === 401) {
@@ -282,7 +277,6 @@ export default function PortfolioCreateView({ testUser, onClose }: PortfolioCrea
       const response = await axiosInstance.post('/api/portfolios', portfolioData);
 
       if (response.status === 201 || response.status === 200) {
-        console.log('포트폴리오 생성 성공:', response.data);
         alert('포트폴리오가 성공적으로 등록되었습니다!');
         
         // 폼 초기화
@@ -308,7 +302,6 @@ export default function PortfolioCreateView({ testUser, onClose }: PortfolioCrea
         fetchPortfolios();
       }
     } catch (error: any) {
-      console.error('포트폴리오 생성 실패:', error);
       
       let errorMessage = '포트폴리오 등록에 실패했습니다.';
       if (error.response?.status === 400) {
@@ -346,18 +339,18 @@ export default function PortfolioCreateView({ testUser, onClose }: PortfolioCrea
       </TabContainer>
 
       {activeTab === "create" ? (
-                 <PortfolioSection>
-           <SectionHeader>
+        <PortfolioSection>
+          <SectionHeader>
              <SectionTitle>
                {isEditMode ? '포트폴리오 수정' : '나의 능력을 어필해보세요'}
              </SectionTitle>
-             <SectionDescription>
+            <SectionDescription>
                {isEditMode 
                  ? '포트폴리오 정보를 수정하고 저장하세요.'
                  : '상인들이 간단한 업무를 맡길 때 참고할 수 있는 포트폴리오를 만들어보세요. 영상편집, 디자인, 번역 등 어떤 재능이든 자유롭게 표현할 수 있습니다.'
                }
-             </SectionDescription>
-           </SectionHeader>
+            </SectionDescription>
+          </SectionHeader>
 
           <FormContainer>
             <FormRow>
@@ -370,13 +363,13 @@ export default function PortfolioCreateView({ testUser, onClose }: PortfolioCrea
               />
             </FormRow>
 
-                         <FormRow>
-               <FormLabel>업무 분야 *</FormLabel>
-               <FormSelect 
-                 value={formData.category}
-                 onChange={(e) => handleInputChange("category", e.target.value)}
-               >
-                 <option value="">업무 분야를 선택하세요</option>
+            <FormRow>
+              <FormLabel>업무 분야 *</FormLabel>
+              <FormSelect 
+                value={formData.category}
+                onChange={(e) => handleInputChange("category", e.target.value)}
+              >
+                <option value="">업무 분야를 선택하세요</option>
                  <option value="영상/편집">영상/편집</option>
                  <option value="디자인/그래픽">디자인/그래픽</option>
                  <option value="번역/통역">번역/통역</option>
@@ -387,8 +380,8 @@ export default function PortfolioCreateView({ testUser, onClose }: PortfolioCrea
                  <option value="교육/강의">교육/강의</option>
                  <option value="이벤트/행사">이벤트/행사</option>
                  <option value="기타">기타</option>
-               </FormSelect>
-             </FormRow>
+              </FormSelect>
+            </FormRow>
 
             <FormRow>
               <FormLabel>보유 기술/재능 *</FormLabel>
@@ -400,19 +393,19 @@ export default function PortfolioCreateView({ testUser, onClose }: PortfolioCrea
               />
             </FormRow>
 
-                         <FormRow>
-               <FormLabel>경험 수준 *</FormLabel>
-               <FormSelect 
-                 value={formData.experience}
-                 onChange={(e) => handleInputChange("experience", e.target.value)}
-               >
-                 <option value="">경험 수준을 선택하세요</option>
+            <FormRow>
+              <FormLabel>경험 수준 *</FormLabel>
+              <FormSelect 
+                value={formData.experience}
+                onChange={(e) => handleInputChange("experience", e.target.value)}
+              >
+                <option value="">경험 수준을 선택하세요</option>
                  <option value="초보자">초보자 (1년 미만)</option>
                  <option value="중급자">중급자 (1-3년)</option>
                  <option value="고급자">고급자 (3-5년)</option>
                  <option value="전문가">전문가 (5년 이상)</option>
-               </FormSelect>
-             </FormRow>
+              </FormSelect>
+            </FormRow>
 
             <FormRow>
               <FormLabel>시급/건당 요금 *</FormLabel>
@@ -462,10 +455,10 @@ export default function PortfolioCreateView({ testUser, onClose }: PortfolioCrea
               />
             </FormRow>
 
-                         <FormRow>
-               <FormLabel>업무 가능 시간</FormLabel>
-               <TimeOptionsContainer>
-                 <TimeOption>
+            <FormRow>
+              <FormLabel>업무 가능 시간</FormLabel>
+              <TimeOptionsContainer>
+                <TimeOption>
                    <input 
                      type="checkbox" 
                      id="weekday" 
@@ -475,9 +468,9 @@ export default function PortfolioCreateView({ testUser, onClose }: PortfolioCrea
                        weekday: e.target.checked
                      })}
                    />
-                   <label htmlFor="weekday">평일</label>
-                 </TimeOption>
-                 <TimeOption>
+                  <label htmlFor="weekday">평일</label>
+                </TimeOption>
+                <TimeOption>
                    <input 
                      type="checkbox" 
                      id="weekend" 
@@ -487,9 +480,9 @@ export default function PortfolioCreateView({ testUser, onClose }: PortfolioCrea
                        weekend: e.target.checked
                      })}
                    />
-                   <label htmlFor="weekend">주말</label>
-                 </TimeOption>
-                 <TimeOption>
+                  <label htmlFor="weekend">주말</label>
+                </TimeOption>
+                <TimeOption>
                    <input 
                      type="checkbox" 
                      id="evening" 
@@ -499,9 +492,9 @@ export default function PortfolioCreateView({ testUser, onClose }: PortfolioCrea
                        evening: e.target.checked
                      })}
                    />
-                   <label htmlFor="evening">저녁시간</label>
-                 </TimeOption>
-                 <TimeOption>
+                  <label htmlFor="evening">저녁시간</label>
+                </TimeOption>
+                <TimeOption>
                    <input 
                      type="checkbox" 
                      id="flexible" 
@@ -511,10 +504,10 @@ export default function PortfolioCreateView({ testUser, onClose }: PortfolioCrea
                        flexible: e.target.checked
                      })}
                    />
-                   <label htmlFor="flexible">시간 유연</label>
-                 </TimeOption>
-               </TimeOptionsContainer>
-             </FormRow>
+                  <label htmlFor="flexible">시간 유연</label>
+                </TimeOption>
+              </TimeOptionsContainer>
+            </FormRow>
           </FormContainer>
 
                      {(submitError || updateError || deleteError) && (
@@ -523,7 +516,7 @@ export default function PortfolioCreateView({ testUser, onClose }: PortfolioCrea
              </ErrorMessage>
            )}
 
-           <ActionButtons>
+          <ActionButtons>
              {isEditMode && (
                <CancelButton onClick={handleCancelEdit}>
                  취소
@@ -537,8 +530,8 @@ export default function PortfolioCreateView({ testUser, onClose }: PortfolioCrea
                  ? (isEditMode ? '수정 중...' : '등록 중...') 
                  : (isEditMode ? '포트폴리오 수정하기' : '포트폴리오 등록하기')
                }
-             </SubmitButton>
-           </ActionButtons>
+            </SubmitButton>
+          </ActionButtons>
         </PortfolioSection>
       ) : (
         <PortfolioSection>
@@ -564,10 +557,10 @@ export default function PortfolioCreateView({ testUser, onClose }: PortfolioCrea
               <EmptyDescription>새로 만들기 탭에서 첫 번째 포트폴리오를 등록해보세요!</EmptyDescription>
             </EmptyState>
           ) : (
-            <PortfolioList>
+          <PortfolioList>
               {portfolios.map((portfolio) => (
                 <PortfolioItem key={portfolio.portfolioId}>
-                  <PortfolioInfo>
+              <PortfolioInfo>
                     <PortfolioTitle>{portfolio.title}</PortfolioTitle>
                     <PortfolioContent>{portfolio.content}</PortfolioContent>
                     {portfolio.projectUrl && (
@@ -576,14 +569,14 @@ export default function PortfolioCreateView({ testUser, onClose }: PortfolioCrea
                     <PortfolioDate>
                       등록일: {new Date(portfolio.createdAt).toLocaleDateString('ko-KR')}
                     </PortfolioDate>
-                  </PortfolioInfo>
-                                     <PortfolioActions>
+              </PortfolioInfo>
+              <PortfolioActions>
                      <EditButton onClick={() => handleEdit(portfolio)}>수정</EditButton>
                      <DeleteButton onClick={() => handleDeleteClick(portfolio)}>삭제</DeleteButton>
-                   </PortfolioActions>
-                </PortfolioItem>
+              </PortfolioActions>
+            </PortfolioItem>
               ))}
-            </PortfolioList>
+          </PortfolioList>
           )}
         </PortfolioSection>
       )}

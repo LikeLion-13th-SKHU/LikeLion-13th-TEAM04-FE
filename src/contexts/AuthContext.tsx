@@ -65,7 +65,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           };
           setUser(mapped);
         } catch (error) {
-          console.error("프로필 동기화 오류:", error);
           // 에러 발생 시 토큰 제거
           localStorage.removeItem("accessToken");
           setUser(null);

@@ -2,16 +2,21 @@ import styled from "styled-components";
 import { colors } from "../styles/theme";
 import type { NoticePost } from "../types/notice";
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { getPostDetail } from "../api/posts";
+import { createUserChatRoom } from "../api/chat";
+import { useAuth } from "../contexts/AuthContext";
 
 // 목업 제거, 실제 API 사용
 
 const NoticeDetailPage = () => {
   const { id } = useParams();
+  const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState<NoticePost | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [chatLoading, setChatLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +41,7 @@ const NoticeDetailPage = () => {
           workHours: d.work_time,
           description: d.content,
           logoUrl: undefined,
+          authorId: d.memberId,
         };
         if (!cancelled) setData(mapped);
       } catch (e: any) {
@@ -49,6 +55,58 @@ const NoticeDetailPage = () => {
       cancelled = true;
     };
   }, [id]);
+
+  // 채팅하기 기능
+  const handleStartChat = async () => {
+    if (!isAuthenticated) {
+      alert("로그인이 필요합니다.");
+      navigate("/login");
+      return;
+    }
+
+    if (!data) return;
+
+    // 작성자와 채팅하려는 사용자가 같은 사람인지 확인
+    if (user?.memberId === data.authorId) {
+      alert("자신의 공고글과는 채팅할 수 없습니다.");
+      return;
+    }
+
+    setChatLoading(true);
+    try {
+      // 공고글 작성자의 memberId 사용
+      // const authorMemberId = data.authorId;
+      const authorMemberId = 9;
+      const test1 = 29;
+      
+      if (!authorMemberId) {
+        alert("작성자 정보를 찾을 수 없습니다.");
+        return;
+      }
+
+  
+      
+      const response = await createUserChatRoom({
+        type: "DIRECT",
+        otherUserId: authorMemberId,
+        roomName: "지원 문의",
+        // roomName: `{data.title} 지원 문의`,
+        // postId: Number(id)
+        postId: test1
+      });
+      
+      if (response.success) {
+        alert("채팅방이 생성되었습니다.");
+        navigate("/chat"); // 채팅 목록 페이지로 이동
+      } else {
+        alert("채팅방 생성에 실패했습니다.");
+      }
+    } catch (error: any) {
+      alert("채팅방 생성 중 오류가 발생했습니다.");
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   return (
     <PageRoot>
@@ -111,6 +169,15 @@ const NoticeDetailPage = () => {
 
             <Actions>
               <ApplyButton type="button">지원하기</ApplyButton>
+              {user?.memberId !== data.authorId && (
+                <ChatButton 
+                  type="button" 
+                  onClick={handleStartChat}
+                  disabled={chatLoading}
+                >
+                  {chatLoading ? "채팅방 생성 중..." : "이 사람과 채팅하기"}
+                </ChatButton>
+              )}
             </Actions>
           </>
         )}
@@ -278,6 +345,32 @@ const ApplyButton = styled.button`
   align-items: center;
   gap: 0.5rem;
 `;
+
+const ChatButton = styled.button`
+  height: 2.25rem;
+  padding: 0 0.875rem;
+  border-radius: 0.5rem;
+  background: ${colors.green[600]};
+  color: ${colors.white};
+  border: none;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover:not(:disabled) {
+    background: ${colors.green[600]};
+  }
+
+  &:disabled {
+    background: ${colors.gray[400]};
+    cursor: not-allowed;
+  }
+`;
+
 
 const Loading = styled.div`
   margin: 0.5rem 0 1rem;
