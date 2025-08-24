@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import styled from "styled-components";
 import InfoCard from "../components/mypage/InfoCard";
 import PostsView from "../components/posts/PostsView";
@@ -22,8 +22,14 @@ export default function MyPage() {
   const [showPortfolioCreate, setShowPortfolioCreate] = useState(false);
   
   // 로그인되지 않은 경우 로그인 페이지로 리다이렉트
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, navigate]);
+
+  // 인증되지 않았거나 user 정보가 없는 경우 아무것도 렌더링하지 않음
   if (!isAuthenticated || !user) {
-    navigate('/login');
     return null;
   }
 
@@ -33,20 +39,9 @@ export default function MyPage() {
     updateUserNickname(newNickname);
   };
 
-  // 현재 점수 (임시로 100점 설정)
-  const currentScore = 100;
-
-  // 점수에 따른 등급 계산 함수
-  const getGrade = (score: number) => {
-    if (score >= 100) return "다이아몬드";
-    if (score >= 51) return "플래티넘";
-    if (score >= 31) return "골드";
-    if (score >= 11) return "실버";
-    if (score >= 0) return "브론즈";
-    return "브론즈";
-  };
-
-  const currentGrade = getGrade(currentScore);
+  // 사용자 정보에서 점수와 등급 가져오기
+  const currentScore = user?.score || 0;
+  const currentGrade = user?.grade || "브론즈";
 
   return (
     <MyPageContainer>

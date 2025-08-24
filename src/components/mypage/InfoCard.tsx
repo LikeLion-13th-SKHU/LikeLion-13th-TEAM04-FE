@@ -3,6 +3,7 @@ import styled from "styled-components";
 import { colors } from "../../styles/theme";
 import GradeDisplay from "../common/GradeDisplay";
 import { useAuth } from "../../contexts/AuthContext";
+import { axiosInstance } from "../../utils/apiConfig";
 
 interface InfoCardProps {
   userName: string;
@@ -24,6 +25,8 @@ export default function InfoCard({
   const [nickname, setNickname] = useState(userName);
   const [showRoleChange, setShowRoleChange] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [isCheckingNickname, setIsCheckingNickname] = useState(false);
+  const [nicknameStatus, setNicknameStatus] = useState<'idle' | 'available' | 'duplicate' | 'error'>('idle');
 
   // 전역 사용자 상태에서 닉네임 동기화
   useEffect(() => {
@@ -44,12 +47,29 @@ export default function InfoCard({
   };
 
   const handleSave = () => {
-    setIsEditing(false);
-    // 전역 상태에 닉네임 저장
-    updateUserNickname(nickname);
+    // 중복 확인이 완료되지 않은 경우 중복 확인 요청
+    if (nicknameStatus === 'idle') {
+      checkNicknameDuplicate(nickname);
+      return;
+    }
 
-    if (onNicknameChange && nickname !== userName) {
-      onNicknameChange(nickname);
+    // 중복된 닉네임인 경우 저장 불가
+    if (nicknameStatus === 'duplicate') {
+      alert('이미 사용 중인 닉네임입니다. 다른 닉네임을 입력해주세요.');
+      return;
+    }
+
+    // 사용 가능한 닉네임인 경우에만 저장
+    if (nicknameStatus === 'available') {
+      setIsEditing(false);
+      // 전역 상태에 닉네임 저장
+      updateUserNickname(nickname);
+
+      if (onNicknameChange && nickname !== userName) {
+        onNicknameChange(nickname);
+      }
+      
+      setNicknameStatus('idle');
     }
   };
 
@@ -57,6 +77,51 @@ export default function InfoCard({
     setIsEditing(false);
     // 전역 사용자 닉네임으로 되돌리기
     setNickname(user?.nickname || userName);
+    setNicknameStatus('idle');
+  };
+
+  // 닉네임 중복 확인 함수
+  const checkNicknameDuplicate = async (nicknameToCheck: string) => {
+    if (!nicknameToCheck.trim()) {
+      setNicknameStatus('error');
+      return;
+    }
+
+    // 현재 닉네임과 동일한 경우 중복 확인 불필요
+    if (nicknameToCheck === (user?.nickname || userName)) {
+      setNicknameStatus('available');
+      return;
+    }
+
+    setIsCheckingNickname(true);
+    setNicknameStatus('idle');
+
+    try {
+      const response = await axiosInstance.get(`/api/members/check/nickname?nickname=${encodeURIComponent(nicknameToCheck)}`);
+      
+      if (response.status === 200) {
+        const data = response.data;
+        if (data.available) {
+          setNicknameStatus('available');
+        } else {
+          setNicknameStatus('duplicate');
+        }
+      } else {
+        setNicknameStatus('error');
+      }
+    } catch (error) {
+      console.error('닉네임 중복 확인 오류:', error);
+      setNicknameStatus('error');
+    } finally {
+      setIsCheckingNickname(false);
+    }
+  };
+
+  // 닉네임 입력 변경 시 중복 확인 상태 초기화
+  const handleNicknameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newNickname = e.target.value;
+    setNickname(newNickname);
+    setNicknameStatus('idle');
   };
 
   const handleRoleChange = async (newRole: "청년" | "상인") => {
@@ -85,29 +150,21 @@ export default function InfoCard({
 
     try {
       // 백엔드 API 호출하여 회원탈퇴 처리
-      const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
-      const response = await fetch(`${apiBaseUrl}/api/members/me`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-        },
-      });
+      const response = await axiosInstance.delete("/api/members/me");
 
-      if (response.ok) {
+      if (response.status === 200) {
         // 회원탈퇴 성공
         alert("회원탈퇴가 완료되었습니다.");
 
         // 로그아웃 처리
         logout();
 
-        // 메인 페이지로 이동
-        window.location.href = "/";
+        // 강제로 페이지 새로고침하여 모든 상태 초기화
+        window.location.reload();
       } else {
         throw new Error("회원탈퇴 처리에 실패했습니다.");
       }
-    } catch (error) {
-      console.error("회원탈퇴 오류:", error);
+    } catch (error: any) {
       alert("회원탈퇴 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
     } finally {
       setIsWithdrawing(false);
@@ -134,12 +191,30 @@ export default function InfoCard({
           <InfoRow>
             <InfoLabel>닉네임</InfoLabel>
             {isEditing ? (
-              <InfoInput
-                type="text"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                placeholder="닉네임을 입력하세요"
-              />
+              <NicknameEditContainer>
+                <InfoInput
+                  type="text"
+                  value={nickname}
+                  onChange={handleNicknameChange}
+                  placeholder="닉네임을 입력하세요"
+                  hasError={nicknameStatus === 'duplicate'}
+                />
+                <NicknameCheckButton 
+                  onClick={() => checkNicknameDuplicate(nickname)}
+                  disabled={isCheckingNickname || !nickname.trim()}
+                >
+                  {isCheckingNickname ? '확인 중...' : '중복 확인'}
+                </NicknameCheckButton>
+                {nicknameStatus === 'available' && (
+                  <NicknameStatus available>✓ 사용 가능한 닉네임입니다</NicknameStatus>
+                )}
+                {nicknameStatus === 'duplicate' && (
+                  <NicknameStatus available={false}>✗ 이미 사용 중인 닉네임입니다</NicknameStatus>
+                )}
+                {nicknameStatus === 'error' && (
+                  <NicknameStatus available={false}>✗ 오류가 발생했습니다</NicknameStatus>
+                )}
+              </NicknameEditContainer>
             ) : (
               <InfoValue>{nickname}</InfoValue>
             )}
@@ -194,22 +269,7 @@ export default function InfoCard({
         </PasswordContent>
       </InfoSection>
 
-      <Divider />
 
-      {/* 해외 로그인 차단 섹션 */}
-      <InfoSection>
-        <SectionHeader>
-          <SectionTitle>해외 로그인 차단</SectionTitle>
-          <ToggleSwitch>
-            <ToggleSlider />
-          </ToggleSwitch>
-        </SectionHeader>
-        <InfoDescription>
-          해외 또는 해외 아이피로 로그인을 시도할 경우 청상회 접속을 차단합니다.
-        </InfoDescription>
-      </InfoSection>
-
-      <Divider />
 
       {/* 회원탈퇴 섹션 */}
       <InfoSection>
@@ -343,18 +403,18 @@ const InfoValue = styled.div`
   color: ${colors.gray[900]};
 `;
 
-const InfoInput = styled.input`
+const InfoInput = styled.input<{ hasError?: boolean }>`
   flex: 1;
   padding: 0.5rem;
-  border: 1px solid ${colors.gray[300]};
+  border: 1px solid ${props => props.hasError ? colors.red[500] : colors.gray[300]};
   border-radius: 0.375rem;
   font-size: 0.875rem;
   min-width: 150px;
 
   &:focus {
     outline: none;
-    border-color: ${colors.blue[500]};
-    box-shadow: 0 0 0 3px ${colors.blue[100]};
+    border-color: ${props => props.hasError ? colors.red[500] : colors.blue[500]};
+    box-shadow: 0 0 0 3px ${props => props.hasError ? colors.red[100] : colors.blue[100]};
   }
 `;
 
@@ -488,31 +548,7 @@ const GoogleText = styled.div`
   }
 `;
 
-const ToggleSwitch = styled.div`
-  width: 3rem;
-  height: 1.5rem;
-  background-color: ${colors.gray[300]};
-  border-radius: 1rem;
-  position: relative;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
 
-  &:hover {
-    background-color: ${colors.gray[300]};
-  }
-`;
-
-const ToggleSlider = styled.div`
-  width: 1.25rem;
-  height: 1.25rem;
-  background-color: white;
-  border-radius: 50%;
-  position: absolute;
-  top: 0.125rem;
-  right: 0.125rem;
-  transition: transform 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-`;
 
 const WithdrawButton = styled.button`
   padding: 0.375rem 0.75rem;
@@ -545,4 +581,39 @@ const Divider = styled.hr`
   height: 1px;
   background-color: ${colors.blue[300]};
   margin: 2rem 0;
+`;
+
+const NicknameEditContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+`;
+
+const NicknameCheckButton = styled.button`
+  background-color: ${colors.blue[500]};
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  align-self: flex-start;
+
+  &:hover:not(:disabled) {
+    background-color: ${colors.blue[600]};
+  }
+
+  &:disabled {
+    background-color: ${colors.gray[300]};
+    color: ${colors.gray[500]};
+    cursor: not-allowed;
+  }
+`;
+
+const NicknameStatus = styled.div<{ available: boolean }>`
+  font-size: 0.75rem;
+  color: ${props => props.available ? colors.green[600] : colors.red[600]};
+  font-weight: 500;
 `;

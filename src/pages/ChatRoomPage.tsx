@@ -4,6 +4,7 @@ import styled from "styled-components";
 import { colors } from "../styles/theme";
 import type { ChatMessageItem, User } from "../types/userChat";
 import { useAuth } from "../contexts/AuthContext";
+import { axiosInstance } from "../utils/apiConfig";
 
 export default function ChatRoomPage() {
   const { chatRoomId } = useParams<{ chatRoomId: string }>();
@@ -11,52 +12,82 @@ export default function ChatRoomPage() {
   const { user, isAuthenticated } = useAuth();
   const [inputMessage, setInputMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessageItem[]>([]);
+  const [otherUser, setOtherUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
-  // 임시 상대방 정보 (실제로는 채팅방 ID를 통해 가져와야 함)
-  const otherUser: User = {
-    id: "user2",
-    name: "박청년",
-    role: "청년",
-    profileImageUrl: "https://via.placeholder.com/40",
-    isOnline: true
-  };
 
-  // 임시 메시지 데이터
+  // 채팅방 정보와 메시지 가져오기
   useEffect(() => {
-    if (!isAuthenticated || !user) return;
-    
-    const sampleMessages: ChatMessageItem[] = [
-      {
-        id: "1",
-        senderId: "user2",
-        senderName: "박청년",
-        senderAvatarUrl: otherUser.profileImageUrl,
-        content: "안녕하세요! 지원서 제출했습니다.",
-        createdAt: Date.now() - 1000 * 60 * 60 * 2,
-        isRead: true
-      },
-      {
-        id: "2",
-        senderId: user.id,
-        senderName: user.name,
-        senderAvatarUrl: user.profileImageUrl,
-        content: "안녕하세요! 지원서 잘 봤습니다.",
-        createdAt: Date.now() - 1000 * 60 * 60,
-        isRead: true
-      },
-      {
-        id: "3",
-        senderId: "user2",
-        senderName: "박청년",
-        senderAvatarUrl: otherUser.profileImageUrl,
-        content: "감사합니다! 혹시 추가로 필요한 서류가 있나요?",
-        createdAt: Date.now() - 1000 * 60 * 30,
-        isRead: true
+    const fetchChatRoomData = async () => {
+      if (!isAuthenticated || !user || !chatRoomId) return;
+      
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        // 채팅방 정보 가져오기 (현재 사용자의 채팅방만)
+        const roomResponse = await axiosInstance.get(`/chat/rooms?userId=${user.id}`);
+        
+        if (roomResponse.status === 200) {
+          const rooms = roomResponse.data.data || [];
+          // 현재 채팅방 ID와 일치하는 채팅방 찾기
+          const currentRoom = rooms.find((room: any) => room.id === parseInt(chatRoomId));
+          
+          if (currentRoom) {
+            // 상대방 ID를 사용하여 사용자 정보 가져오기
+            const otherUserId = currentRoom.participantId;
+            if (otherUserId) {
+              // 상대방 사용자 정보를 가져오는 API 호출 (필요시)
+              // const userResponse = await axiosInstance.get(`/api/members/${otherUserId}`);
+              // setOtherUser(userResponse.data);
+              
+              // 임시로 기본 사용자 정보 설정
+              setOtherUser({
+                id: otherUserId.toString(),
+                name: `사용자 ${otherUserId}`,
+                profileImageUrl: '',
+                role: "청년", // 기본값으로 청년 설정
+                isOnline: false
+              });
+            }
+          } else {
+            setError('채팅방을 찾을 수 없습니다.');
+          }
+        }
+        
+        // 메시지 가져오기
+        const messagesResponse = await axiosInstance.get(`/chat/rooms/${chatRoomId}/messages`);
+        
+        if (messagesResponse.status === 200) {
+          setMessages(messagesResponse.data.content || messagesResponse.data || []);
+        }
+      } catch (error) {
+        console.error('채팅방 데이터 가져오기 오류:', error);
+        
+        // 더 자세한 에러 메시지
+        let errorMessage = '채팅방을 불러오는데 실패했습니다.';
+        if (error && typeof error === 'object' && 'response' in error) {
+          const apiError = error as any;
+          if (apiError.response?.status === 404) {
+            errorMessage = '채팅방을 찾을 수 없습니다. (404 Not Found)';
+          } else if (apiError.response?.status === 401) {
+            errorMessage = '인증이 필요합니다. (401 Unauthorized)';
+          } else if (apiError.response?.status === 403) {
+            errorMessage = '접근 권한이 없습니다. (403 Forbidden)';
+          }
+        }
+        
+        setError(errorMessage);
+        // 에러 발생 시 기본 메시지 설정
+        setMessages([]);
+      } finally {
+        setIsLoading(false);
       }
-    ];
-    setMessages(sampleMessages);
-  }, [user?.profileImageUrl, otherUser.profileImageUrl, user?.id, user?.name, isAuthenticated]);
+    };
+
+    fetchChatRoomData();
+  }, [chatRoomId, isAuthenticated, user]);
 
   // 메시지 전송
   const handleSendMessage = (e: React.FormEvent) => {
@@ -118,6 +149,30 @@ export default function ChatRoomPage() {
     });
   };
 
+  // 로딩 중이거나 에러가 있는 경우 처리
+  if (isLoading) {
+    return (
+      <PageContainer>
+        <LoadingState>
+          <LoadingIcon>⏳</LoadingIcon>
+          <LoadingText>채팅방을 불러오는 중...</LoadingText>
+        </LoadingState>
+      </PageContainer>
+    );
+  }
+
+  if (error || !otherUser) {
+    return (
+      <PageContainer>
+        <ErrorState>
+          <ErrorIcon>⚠️</ErrorIcon>
+          <ErrorText>{error || '채팅방 정보를 불러올 수 없습니다.'}</ErrorText>
+          <RetryButton onClick={() => window.location.reload()}>다시 시도</RetryButton>
+        </ErrorState>
+      </PageContainer>
+    );
+  }
+
   return (
     <PageContainer>
       <ChatHeader>
@@ -154,13 +209,13 @@ export default function ChatRoomPage() {
 
       <InputContainer>
         <MessageForm onSubmit={handleSendMessage}>
-                     <MessageInput
-             value={inputMessage}
-             onChange={(e) => setInputMessage(e.target.value)}
-             onKeyDown={handleKeyDown}
-             placeholder="메시지를 입력하세요..."
-             rows={1}
-           />
+          <MessageInput
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="메시지를 입력하세요..."
+            rows={1}
+          />
           <SendButton type="submit" disabled={!inputMessage.trim()}>
             전송
           </SendButton>
@@ -379,5 +434,67 @@ const SendButton = styled.button`
     cursor: not-allowed;
     transform: none;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+`;
+
+const LoadingState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+`;
+
+const LoadingIcon = styled.div`
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  animation: spin 1s linear infinite;
+  
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+`;
+
+const LoadingText = styled.p`
+  font-size: 1rem;
+  color: ${colors.gray[600]};
+  margin: 0;
+`;
+
+const ErrorState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+`;
+
+const ErrorIcon = styled.div`
+  font-size: 3rem;
+  margin-bottom: 1rem;
+`;
+
+const ErrorText = styled.p`
+  font-size: 1rem;
+  color: ${colors.red[600]};
+  margin: 0 0 1rem 0;
+`;
+
+const RetryButton = styled.button`
+  padding: 0.75rem 1.5rem;
+  background-color: ${colors.blue[600]};
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: ${colors.blue[700]};
   }
 `;

@@ -12,4 +12,6 @@ export type User = {
   address?: string;
   bio?: string;
   jobCategory?: string;
+  score?: number;
+  grade?: string;
 };

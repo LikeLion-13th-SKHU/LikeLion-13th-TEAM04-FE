@@ -1,58 +1,46 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import { colors } from "../styles/theme";
 import type { ChatRoom, User } from "../types/userChat";
 import { useAuth } from "../contexts/AuthContext";
+import { axiosInstance } from "../utils/apiConfig";
 
 export default function ChatListPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   
-  // 임시 채팅방 데이터 (실제로는 API를 통해 가져와야 함)
-  const [chatRooms] = useState<ChatRoom[]>(() => {
-    if (!isAuthenticated || !user) return [];
-    
-    return [
-      {
-        id: "1",
-        participants: [
-          { id: user.id, name: user.name, role: user.role, profileImageUrl: user.profileImageUrl, isOnline: true },
-          { id: "user2", name: "박청년", role: "청년", profileImageUrl: "https://via.placeholder.com/40", isOnline: false }
-        ],
-        lastMessage: {
-          id: "msg1",
-          senderId: user.id,
-          senderName: user.name,
-          content: "안녕하세요! 지원서 잘 봤습니다.",
-          createdAt: Date.now() - 1000 * 60 * 30, // 30분 전
-          isRead: false
-        },
-        unreadCount: 2,
-        createdAt: Date.now() - 1000 * 60 * 60 * 24, // 1일 전
-        updatedAt: Date.now() - 1000 * 60 * 30
-      },
-      {
-        id: "2",
-        participants: [
-          { id: user.id, name: user.name, role: user.role, profileImageUrl: user.profileImageUrl, isOnline: true },
-          { id: "user3", name: "이청년", role: "청년", profileImageUrl: "https://via.placeholder.com/40", isOnline: true }
-        ],
-        lastMessage: {
-          id: "msg2",
-          senderId: "user3",
-          senderName: "이청년",
-          content: "네, 면접 일정 조율 가능합니다.",
-          createdAt: Date.now() - 1000 * 60 * 5, // 5분 전
-          isRead: true
-        },
-        unreadCount: 0,
-        createdAt: Date.now() - 1000 * 60 * 60 * 2, // 2시간 전
-        updatedAt: Date.now() - 1000 * 60 * 5
+  const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 채팅방 데이터 가져오기
+  useEffect(() => {
+    const fetchChatRooms = async () => {
+      if (!isAuthenticated || !user) return;
+      
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const response = await axiosInstance.get('/chat/rooms');
+        
+        if (response.status === 200) {
+          setChatRooms(response.data.content || response.data || []);
+        }
+      } catch (error) {
+        console.error('채팅방 가져오기 오류:', error);
+        setError('채팅방을 불러오는데 실패했습니다.');
+        // 에러 발생 시 빈 배열로 설정
+        setChatRooms([]);
+      } finally {
+        setIsLoading(false);
       }
-    ];
-  });
-  
+    };
+
+    fetchChatRooms();
+  }, [isAuthenticated, user]);
+
   // 로그인되지 않은 경우 로그인 페이지로 리다이렉트
   if (!isAuthenticated || !user) {
     navigate('/login');
@@ -82,7 +70,18 @@ export default function ChatListPage() {
       <MainContent>
         <PageTitle>채팅</PageTitle>
         
-        {chatRooms.length === 0 ? (
+        {isLoading ? (
+          <LoadingState>
+            <LoadingIcon>⏳</LoadingIcon>
+            <LoadingText>채팅방을 불러오는 중...</LoadingText>
+          </LoadingState>
+        ) : error ? (
+          <ErrorState>
+            <ErrorIcon>⚠️</ErrorIcon>
+            <ErrorText>{error}</ErrorText>
+            <RetryButton onClick={() => window.location.reload()}>다시 시도</RetryButton>
+          </ErrorState>
+        ) : chatRooms.length === 0 ? (
           <EmptyState>
             <EmptyIcon>💬</EmptyIcon>
             <EmptyText>아직 채팅방이 없습니다</EmptyText>
@@ -261,4 +260,66 @@ const EmptySubText = styled.p`
   font-size: 0.875rem;
   color: ${colors.gray[500]};
   margin: 0;
+`;
+
+const LoadingState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  text-align: center;
+`;
+
+const LoadingIcon = styled.div`
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  animation: spin 1s linear infinite;
+  
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+`;
+
+const LoadingText = styled.p`
+  font-size: 1rem;
+  color: ${colors.gray[600]};
+  margin: 0;
+`;
+
+const ErrorState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  text-align: center;
+`;
+
+const ErrorIcon = styled.div`
+  font-size: 3rem;
+  margin-bottom: 1rem;
+`;
+
+const ErrorText = styled.p`
+  font-size: 1rem;
+  color: ${colors.red[600]};
+  margin: 0 0 1rem 0;
+`;
+
+const RetryButton = styled.button`
+  padding: 0.75rem 1.5rem;
+  background-color: ${colors.blue[600]};
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: ${colors.blue[700]};
+  }
 `;

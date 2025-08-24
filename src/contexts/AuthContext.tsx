@@ -1,4 +1,4 @@
-import React, {
+  import React, {
   createContext,
   useContext,
   useMemo,
@@ -25,17 +25,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
 
   const isAuthenticated = useMemo(
-    () => !!localStorage.getItem("accessToken"),
-    []
+    () => !!localStorage.getItem("accessToken") && !!user,
+    [user]
   );
 
   useEffect(() => {
-    if (isAuthenticated) {
+    const accessToken = localStorage.getItem("accessToken");
+    if (accessToken) {
       const syncProfile = async () => {
         try {
           const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
           const res = await axiosInstance.get(`${apiBaseUrl}/api/members/me`);
-          if (res.status !== 200) return;
+          if (res.status !== 200) {
+            // API 호출 실패 시 토큰 제거
+            localStorage.removeItem("accessToken");
+            setUser(null);
+            return;
+          }
           const data = res.data;
           const mapped: User = {
             id: String(data.id ?? data.userId ?? data.memberId ?? "unknown"),
@@ -54,10 +60,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             address: data.address || undefined,
             bio: data.bio || undefined,
             jobCategory: data.jobCategory || undefined,
+            score: data.score || 0,
+            grade: data.grade || "브론즈",
           };
           setUser(mapped);
         } catch (error) {
           console.error("프로필 동기화 오류:", error);
+          // 에러 발생 시 토큰 제거
+          localStorage.removeItem("accessToken");
+          setUser(null);
         }
       };
       syncProfile();
@@ -83,6 +94,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         address: u.address || undefined,
         bio: u.bio || undefined,
         jobCategory: u.jobCategory || undefined,
+        score: u.score || 0,
+        grade: u.grade || "브론즈",
       };
 
       setUser(userInfo);

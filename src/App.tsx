@@ -12,6 +12,9 @@ import NoticeListPage from "./pages/NoticeListPage";
 import NoticeDetailPage from "./pages/NoticeDetailPage";
 import NoticeCreatePage from "./pages/NoticeCreatePage";
 import MyPage from "./pages/MyPage";
+import PortfolioListPage from "./pages/PortfolioListPage";
+import PortfolioDetailPage from "./pages/PortfolioDetailPage";
+
 import OauthCallback from "./pages/OauthCallback";
 
 function AppContent() {
@@ -34,6 +37,9 @@ function AppContent() {
         <Route path="/notices/new" element={<NoticeCreatePage />} />
 
         <Route path="/me" element={<MyPage />} />
+                            <Route path="/portfolios" element={<PortfolioListPage />} />
+                    <Route path="/portfolios/:portfolioId" element={<PortfolioDetailPage />} />
+
       </Routes>
     </>
   );

@@ -8,12 +8,19 @@ import { ReactComponent as ConvenienceIcon } from "../assets/icons/convenience.s
 import { ReactComponent as DeliveryIcon } from "../assets/icons/delivery.svg";
 import { ReactComponent as RestaurantIcon } from "../assets/icons/restaurant.svg";
 import { useAuth } from "../contexts/AuthContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { axiosInstance } from "../utils/apiConfig";
+import axios from "axios";
 
 export default function MainPage() {
   const { user } = useAuth();
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [portfolioCount, setPortfolioCount] = useState(0);
+  const [activeYouthCount, setActiveYouthCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+
 
   const slides = [
     {
@@ -36,6 +43,50 @@ export default function MainPage() {
     setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
   };
 
+
+
+  // 활동중인 청년 수와 포트폴리오 수 가져오기
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setIsLoading(true);
+        
+        // 청년 역할의 멤버 수는 모든 사용자가 볼 수 있음 (인증 토큰 불필요)
+        const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
+        const youthResponse = await axios.get(`${apiBaseUrl}/api/members/by-role?role=YOUTH`);
+        console.log('청년 수 API 응답:', youthResponse);
+        console.log('청년 수 응답 데이터:', youthResponse.data);
+        
+        if (youthResponse.status === 200) {
+          const youthCount = youthResponse.data.totalElements || 0;
+          console.log('설정할 청년 수:', youthCount);
+          setActiveYouthCount(youthCount);
+        }
+        
+        // 포트폴리오 개수는 모든 사용자가 볼 수 있음 (인증 토큰 불필요)
+        const portfolioResponse = await axios.get(`${apiBaseUrl}/api/portfolios/search`);
+        console.log('포트폴리오 수 API 응답:', portfolioResponse);
+        console.log('포트폴리오 수 응답 데이터:', portfolioResponse.data);
+        
+        if (portfolioResponse.status === 200) {
+          const portfolioCount = portfolioResponse.data.totalElements || portfolioResponse.data.length || 0;
+          console.log('설정할 포트폴리오 수:', portfolioCount);
+          setPortfolioCount(portfolioCount);
+        }
+        
+      } catch (error) {
+        console.error('통계 데이터 가져오기 오류:', error);
+        // 에러 발생 시 기본값 설정
+        setActiveYouthCount(0);
+        setPortfolioCount(0);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [user]); // user 의존성 다시 추가
+
   return (
     <MainContainer>
       {/* 검색 및 필터 섹션 */}
@@ -52,12 +103,7 @@ export default function MainPage() {
         </SearchRow>
 
         <FilterButtons>
-          <FilterButton>지역</FilterButton>
-          <FilterButton>종류</FilterButton>
-          <FilterButton>경력</FilterButton>
-          <FilterButton>학력</FilterButton>
-          <FilterButton>고용기간</FilterButton>
-          <FilterButton>근무형태</FilterButton>
+          {/* 지역별 카테고리는 제거됨 */}
         </FilterButtons>
       </SearchSection>
 
@@ -186,28 +232,24 @@ export default function MainPage() {
             <SectionTitle>청년 포트폴리오</SectionTitle>
           </SectionHeader>
           <PortfolioStats>
-            <StatCard>
-              <StatNumber>1,247</StatNumber>
+            <PortfolioStatCard to="/portfolios">
+              <StatNumber>
+                {isLoading ? '...' : portfolioCount.toLocaleString()}
+              </StatNumber>
               <StatLabel>등록된 포트폴리오</StatLabel>
-            </StatCard>
+              <ViewAllText>전체보기 →</ViewAllText>
+            </PortfolioStatCard>
             <StatCard>
-              <StatNumber>892</StatNumber>
+              <StatNumber>
+                {isLoading ? '...' : activeYouthCount.toLocaleString()}
+              </StatNumber>
               <StatLabel>활동중인 청년</StatLabel>
             </StatCard>
           </PortfolioStats>
         </PortfolioSection>
       </ContentSection>
 
-      {/* 역할별 액션 버튼 */}
-      {user && (
-        <ActionSection>
-          {user.role === "청년" ? (
-            <ActionButton href="/resume">이력서 등록</ActionButton>
-          ) : (
-            <ActionButton href="/post-job">공고 등록</ActionButton>
-          )}
-        </ActionSection>
-      )}
+              
     </MainContainer>
   );
 }
@@ -308,6 +350,8 @@ const FilterButton = styled.button`
     font-size: 0.8rem;
   }
 `;
+
+
 
 const SearchBar = styled.div`
   display: flex;
@@ -694,4 +738,31 @@ const ActionButton = styled.a`
     padding: 0.625rem 1.25rem;
     font-size: 0.9rem;
   }
+`;
+
+
+
+const PortfolioStatCard = styled(Link)`
+  padding: 1.5rem;
+  background: ${({ theme }) => theme.colors.blue[900]};
+  border-radius: 8px;
+  color: white;
+  text-align: center;
+  text-decoration: none;
+  transition: all 0.2s;
+  position: relative;
+  cursor: pointer;
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.blue[700]};
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+`;
+
+const ViewAllText = styled.div`
+  font-size: 0.75rem;
+  opacity: 0.8;
+  margin-top: 0.5rem;
+  font-weight: 500;
 `;
