@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-// import axios from "axios"; // API 연동 시 주석 해제
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createChatRoom, sendAiChat } from "../api/chat";
 import type { ChatMessage, SelectedRole, Recommendation } from "../types/chat";
+import { useAuth } from "../contexts/AuthContext";
 
-const INITIAL_BOT_MESSAGE =
-  "안녕하세요 청상회 AI 매칭 챗봇입니다.\n상인인지 청년인지 선택해주세요";
+const INITIAL_HELLO =
+  "안녕하세요. 잘 부탁드립니다.\n주의 사항: \n1. 새로고침시에 채팅방이 초기화됩니다.";
 
 export type UseChatFlowResult = {
   role: SelectedRole | null;
@@ -25,16 +26,9 @@ export type UseChatFlowResult = {
 };
 
 export const useChatFlow = (): UseChatFlowResult => {
+  const { user } = useAuth();
   const [role, setRole] = useState<SelectedRole | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [
-    {
-      id: crypto.randomUUID(),
-      role: "bot",
-      kind: "text",
-      text: INITIAL_BOT_MESSAGE,
-      createdAt: Date.now(),
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState<string>("");
 
   const detailsBufferRef = useRef<string[]>([]);
@@ -44,6 +38,8 @@ export const useChatFlow = (): UseChatFlowResult => {
   const [summaryReady, setSummaryReady] = useState<boolean>(false);
   const [templateVisible, setTemplateVisible] = useState<boolean>(false);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [roomId, setRoomId] = useState<number | null>(null);
+  const initializedRef = useRef(false);
 
   const canSend = useMemo(
     () => input.trim().length > 0 && role !== null,
@@ -63,8 +59,19 @@ export const useChatFlow = (): UseChatFlowResult => {
     ]);
   }, []);
 
+  // 봇 답변이 "추천 후보"로 시작하면 텍스트 말풍선 생략
+  const pushBotReply = useCallback(
+    (reply: string) => {
+      const trimmed = (reply || "").trim();
+      if (trimmed.startsWith("추천 후보")) return;
+      pushText("bot", reply);
+    },
+    [pushText]
+  );
+
   const pushRecommendations = useCallback(
     (role: "bot" | "user", recs: Recommendation[]) => {
+      if (!recs || recs.length === 0) return;
       setMessages((prev) => [
         ...prev,
         {
@@ -79,34 +86,123 @@ export const useChatFlow = (): UseChatFlowResult => {
     []
   );
 
+  const mapResultsToRecommendations = useCallback(
+    (results: any[]): Recommendation[] => {
+      return (results || []).map((r: any, idx: number) => {
+        const profile: string = String(r.profile || "");
+        const tokens = profile.split(",").map((s) => s.trim());
+        const region = tokens.find((t) => /시|구|동/.test(t)) || "";
+        const availability =
+          tokens.find((t) => /(오전|오후|야간|주|주말|평일|상시)/.test(t)) ||
+          "";
+        const genderRaw = String(r.gender || "");
+        const gender =
+          genderRaw === "남성" || genderRaw === "여성" ? genderRaw : "무관";
+        const matchRate = typeof r.score === "number" ? r.score : 0;
+        const title = r.job || r.skills || tokens[0] || "추천";
+        return {
+          id: String(r.id ?? idx),
+          name: String(r.name || "이름 미상"),
+          age: 0,
+          gender,
+          title: String(title),
+          availability: String(availability),
+          region: String(region),
+          experience: undefined,
+          matchRate,
+        } as Recommendation;
+      });
+    },
+    []
+  );
+
+  // 역할(청년/상인) 선택 시 실행
   const selectRole = useCallback(
     (nextRole: SelectedRole) => {
       if (role) return;
       setRole(nextRole);
       pushText("user", nextRole);
-      pushText(
-        "bot",
-        nextRole === "상인"
-          ? "어떤 분을 찾고 계신가요?\n예시 입력을 기준으로 자유롭게 입력해 주세요."
-          : "어떤 일을 할 수 있고 어느 지역에서 언제 일하고 싶은지 알려주세요.\n예시 입력을 기준으로 자유롭게 입력해 주세요."
-      );
+
+      (async () => {
+        try {
+          const my = Number(
+            (user?.memberId as unknown as number) ??
+              (user?.id ? Number(user.id) : 0)
+          );
+          if (!my) return;
+          let currentRoomId = roomId;
+          if (currentRoomId == null) {
+            const res = await createChatRoom();
+            currentRoomId = res.data.roomId;
+            setRoomId(currentRoomId);
+          }
+
+          const ai = await sendAiChat({
+            roomId: currentRoomId,
+            userId: my,
+            text: nextRole,
+          });
+
+          pushBotReply(ai.data.reply);
+          const recs = mapResultsToRecommendations(ai.data.results);
+          pushRecommendations("bot", recs);
+        } catch (e: any) {}
+      })();
     },
-    [role, pushText]
+    [
+      role,
+      roomId,
+      user,
+      mapResultsToRecommendations,
+      pushRecommendations,
+      pushBotReply,
+    ]
   );
 
-  const submitInput = useCallback(() => {
+  // 입력 전송 버튼 클릭 시 실행
+  const submitInput = useCallback(async () => {
     if (!canSend) return;
     const text = input.trim();
     setInput("");
     pushText("user", text);
     detailsBufferRef.current.push(text);
 
+    try {
+      const my = Number(
+        (user?.memberId as unknown as number) ??
+          (user?.id ? Number(user.id) : 0)
+      );
+      if (!my) throw new Error("로그인이 필요합니다.");
+      let currentRoomId = roomId;
+      if (currentRoomId == null) {
+        const res = await createChatRoom();
+        currentRoomId = res.data.roomId;
+        setRoomId(currentRoomId);
+      }
+      const ai = await sendAiChat({ roomId: currentRoomId, userId: my, text });
+      pushBotReply(ai.data.reply);
+
+      const recs = mapResultsToRecommendations(ai.data.results);
+      pushRecommendations("bot", recs);
+    } catch (e: any) {
+      setError(e.message || "메시지 전송에 실패했습니다.");
+    }
+
     const summaryText = detailsBufferRef.current.length
       ? `요약:\n- ${detailsBufferRef.current.join("\n- ")}`
       : "";
     summaryTextRef.current = summaryText;
     setSummaryReady(summaryText.length > 0);
-  }, [canSend, input, pushText]);
+  }, [
+    canSend,
+    input,
+    pushText,
+    roomId,
+    user,
+    mapResultsToRecommendations,
+    pushRecommendations,
+    pushBotReply,
+  ]);
 
   const showSummary = useCallback(() => {
     if (!summaryTextRef.current) {
@@ -125,82 +221,60 @@ export const useChatFlow = (): UseChatFlowResult => {
     );
   }, [pushText]);
 
+  // 확정 및 전송 버튼 클릭 시 실행
   const confirmAndSend = useCallback(async () => {
     if (!role) return;
     setSending(true);
     setError(null);
-    // const recentMessages = messages.slice(-5);
-    // payload 미리보기는 API 연동 시 생성하여 전송하세요
 
-    /*
-    // 준비되면 주석 해제하여 실제 전송
-    // await axios.post(
-    //   "/api/match/intents",
-    //   _payload,
-    //   { headers: { "Content-Type": "application/json" } }
-    // );
-    */
+    try {
+      const my = Number(
+        (user?.memberId as unknown as number) ??
+          (user?.id ? Number(user.id) : 0)
+      );
+      if (!my) throw new Error("로그인이 필요합니다.");
 
-    // 임시 응답 처리: 샘플 추천 목록 생성
-    const sample: Recommendation[] = [
-      {
-        id: crypto.randomUUID(),
-        name: role === "상인" ? "최최최" : "청년 상점",
-        age: 21,
-        gender: "여성",
-        title: role === "상인" ? "AI 개발자, 경력 없음" : "카페 · 음료",
-        availability: role === "상인" ? "오전, 오후" : "상시",
-        region: role === "상인" ? "계양구" : "연남동",
-        storeName: role === "청년" ? "네모 카페" : undefined,
-        industry: role === "청년" ? "카페/디저트" : undefined,
-        hiringRole: role === "청년" ? "바리스타" : undefined,
-        matchRate: 80,
-      },
-      {
-        id: crypto.randomUUID(),
-        name: role === "상인" ? "기기기" : "두부 식당",
-        age: 25,
-        gender: "남성",
-        title: role === "상인" ? "백엔드 개발자, 경력 없음" : "한식 · 일반식당",
-        availability: role === "상인" ? "오후" : "주5일",
-        region: role === "상인" ? "부평구" : "구월동",
-        storeName: role === "청년" ? "두부네" : undefined,
-        industry: role === "청년" ? "한식" : undefined,
-        hiringRole: role === "청년" ? "홀서빙" : undefined,
-        matchRate: 98,
-      },
-      {
-        id: crypto.randomUUID(),
-        name: role === "상인" ? "웅웅웅" : "파란 빵집",
-        age: 29,
-        gender: "여성",
-        title:
-          role === "상인" ? "프론트엔드 개발자, 경력 5년" : "베이커리 · 제과",
-        availability: role === "상인" ? "오전" : "주말",
-        region: role === "상인" ? "구로구" : "상암동",
-        storeName: role === "청년" ? "파란 빵집" : undefined,
-        industry: role === "청년" ? "베이커리" : undefined,
-        hiringRole: role === "청년" ? "제과제빵 보조" : undefined,
-        matchRate: 86,
-      },
-    ];
-    setRecommendations(sample);
-    pushRecommendations("bot", sample);
-    setSummaryReady(false);
-    setSending(false);
-  }, [role, pushRecommendations]);
+      if (roomId == null) {
+        const roomRes = await createChatRoom();
+        setRoomId(roomRes.data.roomId);
+      }
+
+      const text = summaryTextRef.current || detailsBufferRef.current.join(" ");
+      if (!text) throw new Error("전송할 내용이 없습니다.");
+
+      const res = await sendAiChat({
+        roomId:
+          roomId ||
+          (await (async () => {
+            const tmp = await createChatRoom();
+            return tmp.data.roomId;
+          })()),
+        userId: my,
+        text,
+      });
+
+      pushBotReply(res.data.reply);
+      const recs = mapResultsToRecommendations(res.data.results);
+      pushRecommendations("bot", recs);
+      setSummaryReady(false);
+    } catch (e: any) {
+      setError(e.message || "전송 중 오류가 발생했습니다.");
+    } finally {
+      setSending(false);
+    }
+  }, [
+    role,
+    roomId,
+    pushText,
+    user,
+    mapResultsToRecommendations,
+    pushRecommendations,
+    pushBotReply,
+  ]);
 
   const reset = useCallback(() => {
     setRole(null);
-    setMessages([
-      {
-        id: crypto.randomUUID(),
-        role: "bot",
-        kind: "text",
-        text: INITIAL_BOT_MESSAGE,
-        createdAt: Date.now(),
-      },
-    ]);
+    setMessages([]);
     setInput("");
     detailsBufferRef.current = [];
     summaryTextRef.current = "";
@@ -212,6 +286,42 @@ export const useChatFlow = (): UseChatFlowResult => {
   const toggleTemplateVisible = useCallback(() => {
     setTemplateVisible((v) => !v);
   }, []);
+
+  // 초기 로드 시 방 생성 및 인사로 대화 시작 (중복 호출 방지)
+  useEffect(() => {
+    if (!user) return;
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
+    (async () => {
+      try {
+        const my = Number(
+          (user?.memberId as unknown as number) ??
+            (user?.id ? Number(user.id) : 0)
+        );
+        if (!my) return;
+
+        let currentRoomId = roomId;
+        if (currentRoomId == null) {
+          const res = await createChatRoom();
+          currentRoomId = res.data.roomId;
+          setRoomId(currentRoomId);
+        }
+
+        pushText("user", INITIAL_HELLO);
+
+        const ai = await sendAiChat({
+          roomId: currentRoomId,
+          userId: my,
+          text: INITIAL_HELLO,
+        });
+
+        pushBotReply(ai.data.reply);
+        const recs = mapResultsToRecommendations(ai.data.results);
+        pushRecommendations("bot", recs);
+      } catch {}
+    })();
+  }, [user]);
 
   return {
     role,
