@@ -1,10 +1,11 @@
 import styled from "styled-components";
 import { colors } from "../styles/theme";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import type { NoticeCategory } from "../types/notice";
-import { createPost } from "../api/posts";
+import { createPost, updatePost } from "../api/posts";
 
 import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 const categories: NoticeCategory[] = [
   "CAFE",
@@ -28,6 +29,12 @@ const categoryLabelMap: Record<NoticeCategory, string> = {
 
 const NoticeCreatePage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const state = (location.state || {}) as {
+    mode?: "edit" | "create";
+    postId?: string | number;
+    initial?: any;
+  };
 
   const [category, setCategory] = useState<NoticeCategory | "">("");
   const [region, setRegion] = useState<string>("");
@@ -42,6 +49,62 @@ const NoticeCreatePage = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [recruitEnd, setRecruitEnd] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+
+  const toDateInput = (s?: string) => {
+    if (!s) return "";
+    const norm = s.replace(/[./]/g, "-");
+    // ensure YYYY-MM-DD
+    const parts = norm.split("-").map((p) => p.padStart(2, "0"));
+    if (parts.length >= 3) return `${parts[0]}-${parts[1]}-${parts[2]}`;
+    return norm;
+  };
+
+  // 프리필 (수정 모드)
+  useEffect(() => {
+    if (state?.mode !== "edit" || !state?.initial) return;
+    const initial = state.initial as any;
+
+    // 카테고리 역매핑 (라벨->enum)
+    const labelToEnum = Object.entries(categoryLabelMap).reduce(
+      (acc, [key, label]) => {
+        acc[label] = key as NoticeCategory;
+        return acc;
+      },
+      {} as Record<string, NoticeCategory>
+    );
+
+    const mappedCategory: NoticeCategory | "" =
+      (initial.category &&
+        (labelToEnum[initial.category] || initial.category)) ||
+      "";
+
+    setCategory(mappedCategory as NoticeCategory | "");
+    setRegion(initial.region || initial.location || "");
+    setTitle(initial.title || "");
+    setPay(
+      typeof initial.pay === "number"
+        ? String(initial.pay)
+        : typeof initial.salary === "number"
+        ? String(initial.salary)
+        : ""
+    );
+    setHeadcount(
+      typeof initial.headcount === "number"
+        ? String(initial.headcount)
+        : typeof initial.num === "number"
+        ? String(initial.num)
+        : ""
+    );
+    setWorkHours(initial.workHours || initial.work_time || "");
+    setDescription(initial.description || initial.content || "");
+
+    const ws = toDateInput(initial.workPeriodStart);
+    const we = toDateInput(initial.workPeriodEnd);
+    setWorkStart(ws);
+    setWorkEnd(we);
+
+    setRecruitEnd(toDateInput(initial.deadline));
+  }, [state]);
 
   const formatDateIso = (d: Date) => {
     const yyyy = d.getFullYear();
@@ -98,7 +161,7 @@ const NoticeCreatePage = () => {
       const work_period = `${workStart}~${workEnd}`;
       const image = files[0] ?? null;
 
-      await createPost({
+      const payload = {
         category: category as NoticeCategory,
         title: t,
         content: c,
@@ -111,9 +174,17 @@ const NoticeCreatePage = () => {
         tags,
         image,
         createAt: formatDateIso(new Date()),
-      });
+      };
 
-      alert("공고가 등록되었습니다.");
+      if (state?.mode === "edit" && state?.postId) {
+        const { image: _image, createAt: _createAt, ...jsonOnly } = payload;
+        await updatePost(state.postId, jsonOnly);
+        alert("공고가 수정되었습니다.");
+      } else {
+        await createPost(payload);
+        alert("공고가 등록되었습니다.");
+      }
+
       navigate("/notices");
     } catch (err: any) {
       const message =
@@ -129,7 +200,9 @@ const NoticeCreatePage = () => {
   return (
     <PageRoot>
       <Container>
-        <Title>공고 작성하기</Title>
+        <Title>
+          {state?.mode === "edit" ? "공고 수정하기" : "공고 작성하기"}
+        </Title>
         <Form onSubmit={onSubmit}>
           <Row>
             <Label>카테고리</Label>
@@ -289,7 +362,13 @@ const NoticeCreatePage = () => {
               취소
             </CancelButton>
             <SubmitButton type="submit" disabled={submitting}>
-              {submitting ? "등록 중..." : "작성하기"}
+              {submitting
+                ? state?.mode === "edit"
+                  ? "수정 중..."
+                  : "등록 중..."
+                : state?.mode === "edit"
+                ? "수정하기"
+                : "작성하기"}
             </SubmitButton>
           </Actions>
         </Form>

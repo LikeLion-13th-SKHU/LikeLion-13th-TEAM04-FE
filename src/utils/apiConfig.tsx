@@ -36,7 +36,6 @@ axiosInstance.interceptors.response.use(
 
     // CORS 오류나 네트워크 오류 시 사용자에게 알림
     if (!error.response) {
-      console.error('Network error or CORS issue:', error);
       if (error.message.includes('CORS') || error.code === 'ERR_NETWORK') {
         alert("CORS 정책으로 인해 요청이 차단되었습니다. 백엔드 서버 설정을 확인해주세요.");
       }

@@ -44,13 +44,11 @@ export default function PortfolioDetailPage() {
         setError(null);
         
         const response = await axiosInstance.get(`/api/portfolios/${portfolioId}`);
-        console.log('포트폴리오 상세 API 응답:', response);
         
         if (response.status === 200) {
           setPortfolio(response.data);
         }
       } catch (error: any) {
-        console.error('포트폴리오 상세 가져오기 오류:', error);
         
         let errorMessage = '포트폴리오를 불러오는데 실패했습니다.';
         if (error.response?.status === 404) {

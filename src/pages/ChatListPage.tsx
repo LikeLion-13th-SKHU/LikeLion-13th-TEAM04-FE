@@ -2,15 +2,17 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import { colors } from "../styles/theme";
-import type { ChatRoom, User } from "../types/userChat";
 import { useAuth } from "../contexts/AuthContext";
-import { axiosInstance } from "../utils/apiConfig";
+import {
+  getChatRooms,
+  type ChatRoomItem as ChatRoomItemType,
+} from "../api/chat";
 
 export default function ChatListPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
-  
-  const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
+
+  const [chatRooms, setChatRooms] = useState<ChatRoomItemType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,20 +20,21 @@ export default function ChatListPage() {
   useEffect(() => {
     const fetchChatRooms = async () => {
       if (!isAuthenticated || !user) return;
-      
+
       try {
         setIsLoading(true);
         setError(null);
-        
-        const response = await axiosInstance.get('/chat/rooms');
-        
-        if (response.status === 200) {
-          setChatRooms(response.data.content || response.data || []);
+
+        const response = await getChatRooms();
+
+        if (response.success) {
+          setChatRooms(response.data || []);
+        } else {
+          setError(response.message || "채팅방을 불러오는데 실패했습니다.");
+          setChatRooms([]);
         }
       } catch (error) {
-        console.error('채팅방 가져오기 오류:', error);
-        setError('채팅방을 불러오는데 실패했습니다.');
-        // 에러 발생 시 빈 배열로 설정
+        setError("채팅방을 불러오는데 실패했습니다.");
         setChatRooms([]);
       } finally {
         setIsLoading(false);
@@ -43,25 +46,34 @@ export default function ChatListPage() {
 
   // 로그인되지 않은 경우 로그인 페이지로 리다이렉트
   if (!isAuthenticated || !user) {
-    navigate('/login');
+    navigate("/login");
     return null;
   }
 
-  const handleChatRoomClick = (chatRoomId: string) => {
-    navigate(`/chat/${chatRoomId}`);
+  const handleOpenRoom = (chatRoom: ChatRoomItemType) => {
+    const profile = chatRoom.participantProfile;
+    const otherId =
+      profile && typeof profile.userId === "number"
+        ? profile.userId
+        : chatRoom.participantId;
+    const name = profile?.name || chatRoom.name || `채팅방 ${chatRoom.id}`;
+    const profileImageUrl = profile?.profileImage || "";
+    navigate(`/chat/${chatRoom.id}`, {
+      state: { otherUser: { id: String(otherId), name, profileImageUrl } },
+    });
   };
 
-  const getOtherParticipant = (chatRoom: ChatRoom): User => {
-    return chatRoom.participants.find(p => p.id !== user.id)!;
-  };
+  const formatTime = (timestamp: string) => {
+    const normalized = timestamp?.replaceAll?.(".", "-") || timestamp;
+    const date = new Date(normalized);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
 
-  const formatTime = (timestamp: number) => {
-    const now = Date.now();
-    const diff = now - timestamp;
-    
+    if (Number.isNaN(diff)) return "";
     if (diff < 1000 * 60) return "방금 전";
     if (diff < 1000 * 60 * 60) return `${Math.floor(diff / (1000 * 60))}분 전`;
-    if (diff < 1000 * 60 * 60 * 24) return `${Math.floor(diff / (1000 * 60 * 60))}일 전`;
+    if (diff < 1000 * 60 * 60 * 24)
+      return `${Math.floor(diff / (1000 * 60 * 60))}시간 전`;
     return `${Math.floor(diff / (1000 * 60 * 60 * 24))}일 전`;
   };
 
@@ -69,7 +81,7 @@ export default function ChatListPage() {
     <PageContainer>
       <MainContent>
         <PageTitle>채팅</PageTitle>
-        
+
         {isLoading ? (
           <LoadingState>
             <LoadingIcon>⏳</LoadingIcon>
@@ -79,7 +91,9 @@ export default function ChatListPage() {
           <ErrorState>
             <ErrorIcon>⚠️</ErrorIcon>
             <ErrorText>{error}</ErrorText>
-            <RetryButton onClick={() => window.location.reload()}>다시 시도</RetryButton>
+            <RetryButton onClick={() => window.location.reload()}>
+              다시 시도
+            </RetryButton>
           </ErrorState>
         ) : chatRooms.length === 0 ? (
           <EmptyState>
@@ -90,31 +104,33 @@ export default function ChatListPage() {
         ) : (
           <ChatRoomList>
             {chatRooms.map((chatRoom) => {
-              const otherUser = getOtherParticipant(chatRoom);
+              const avatar =
+                chatRoom.participantProfile?.profileImage ||
+                "/default-avatar.png";
+              const displayName = `no`;
               return (
-                <ChatRoomItem 
+                <ChatRoomItem
                   key={chatRoom.id}
-                  onClick={() => handleChatRoomClick(chatRoom.id)}
+                  onClick={() => handleOpenRoom(chatRoom)}
                 >
                   <UserAvatar>
-                    <AvatarImage src={otherUser.profileImageUrl} alt={otherUser.name} />
-                    <OnlineIndicator $isOnline={otherUser.isOnline || false} />
+                    <AvatarImage src={avatar} alt={displayName} />
                   </UserAvatar>
-                  
+
                   <ChatRoomInfo>
                     <ChatRoomHeader>
-                      <UserName>{otherUser.name}</UserName>
-                      <LastMessageTime>{formatTime(chatRoom.updatedAt)}</LastMessageTime>
+                      <UserName>{displayName}</UserName>
+                      <LastMessageTime>
+                        {formatTime(chatRoom.createdAt)}
+                      </LastMessageTime>
                     </ChatRoomHeader>
-                    
+
                     <LastMessage>
-                      {chatRoom.lastMessage?.content || "새로운 채팅방입니다"}
+                      {chatRoom.postId
+                        ? `공고글 #${chatRoom.name} 관련 채팅`
+                        : "AI 봇 채팅방입니다"}
                     </LastMessage>
                   </ChatRoomInfo>
-                  
-                  {chatRoom.unreadCount > 0 && (
-                    <UnreadBadge>{chatRoom.unreadCount}</UnreadBadge>
-                  )}
                 </ChatRoomItem>
               );
             })}
@@ -178,17 +194,6 @@ const AvatarImage = styled.img`
   object-fit: cover;
 `;
 
-const OnlineIndicator = styled.div<{ $isOnline: boolean }>`
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 0.75rem;
-  height: 0.75rem;
-  border-radius: 50%;
-  background-color: ${props => props.$isOnline ? colors.green[500] : colors.gray[400]};
-  border: 2px solid ${colors.white};
-`;
-
 const ChatRoomInfo = styled.div`
   flex: 1;
   min-width: 0;
@@ -221,19 +226,7 @@ const LastMessage = styled.p`
   text-overflow: ellipsis;
 `;
 
-const UnreadBadge = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.25rem;
-  height: 1.25rem;
-  padding: 0 0.375rem;
-  border-radius: 0.625rem;
-  background-color: ${colors.blue[600]};
-  color: ${colors.white};
-  font-size: 0.75rem;
-  font-weight: 600;
-`;
+// Unread badge 스타일은 추후 서버 연동 시 사용 예정
 
 const EmptyState = styled.div`
   display: flex;
@@ -275,10 +268,14 @@ const LoadingIcon = styled.div`
   font-size: 3rem;
   margin-bottom: 1rem;
   animation: spin 1s linear infinite;
-  
+
   @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
   }
 `;
 

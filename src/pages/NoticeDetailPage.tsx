@@ -2,16 +2,21 @@ import styled from "styled-components";
 import { colors } from "../styles/theme";
 import type { NoticePost } from "../types/notice";
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { getPostDetail } from "../api/posts";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { getPostDetail, deletePost } from "../api/posts";
+import { createUserChatRoom } from "../api/chat";
+import { useAuth } from "../contexts/AuthContext";
 
 // 목업 제거, 실제 API 사용
 
 const NoticeDetailPage = () => {
   const { id } = useParams();
+  const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState<NoticePost | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [chatLoading, setChatLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +41,8 @@ const NoticeDetailPage = () => {
           workHours: d.work_time,
           description: d.content,
           logoUrl: undefined,
+          authorId: d.postUserId ?? d.memberId,
+          isUser: d.isUser,
         };
         if (!cancelled) setData(mapped);
       } catch (e: any) {
@@ -49,6 +56,67 @@ const NoticeDetailPage = () => {
       cancelled = true;
     };
   }, [id]);
+
+  // 채팅하기 기능
+  const handleStartChat = async () => {
+    if (!isAuthenticated) {
+      alert("로그인이 필요합니다.");
+      navigate("/login");
+      return;
+    }
+
+    if (!data) return;
+
+    // 본인 글이면 채팅 불가
+    if (data.isUser || user?.memberId === data.authorId) {
+      alert("자신의 공고글과는 채팅할 수 없습니다.");
+      return;
+    }
+
+    setChatLoading(true);
+    try {
+      const authorMemberId = data.authorId;
+
+      if (!authorMemberId) {
+        alert("작성자 정보를 찾을 수 없습니다.");
+        return;
+      }
+
+      const response = await createUserChatRoom({
+        type: "DIRECT",
+        otherUserId: authorMemberId,
+        roomName: `${data.title} 지원 문의`,
+        postId: Number(id),
+      });
+
+      if (response.success) {
+        alert("채팅방이 생성되었습니다.");
+        navigate("/chat"); // 채팅 목록 페이지로 이동
+      } else {
+        alert("채팅방 생성에 실패했습니다.");
+      }
+    } catch (error: any) {
+      alert("채팅방 생성 중 오류가 발생했습니다.");
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!id) return;
+    if (!data?.isUser) return;
+    const ok = window.confirm("정말 이 공고를 삭제하시겠어요?");
+    if (!ok) return;
+    try {
+      await deletePost(id);
+      alert("공고가 삭제되었습니다.");
+      navigate("/notices");
+    } catch (e: any) {
+      const msg =
+        e?.response?.data?.message || e?.message || "삭제에 실패했습니다.";
+      alert(msg);
+    }
+  };
 
   return (
     <PageRoot>
@@ -111,6 +179,36 @@ const NoticeDetailPage = () => {
 
             <Actions>
               <ApplyButton type="button">지원하기</ApplyButton>
+              {!data.isUser && (
+                <ChatButton
+                  type="button"
+                  onClick={handleStartChat}
+                  disabled={chatLoading}
+                >
+                  {chatLoading ? "채팅방 생성 중..." : "이 사람과 채팅하기"}
+                </ChatButton>
+              )}
+              {data.isUser && (
+                <>
+                  <EditButton
+                    type="button"
+                    onClick={() =>
+                      navigate(`/notices/new`, {
+                        state: {
+                          mode: "edit",
+                          postId: id,
+                          initial: data,
+                        },
+                      })
+                    }
+                  >
+                    수정하기
+                  </EditButton>
+                  <DeleteButton type="button" onClick={handleDelete}>
+                    삭제하기
+                  </DeleteButton>
+                </>
+              )}
             </Actions>
           </>
         )}
@@ -277,6 +375,71 @@ const ApplyButton = styled.button`
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+`;
+
+const ChatButton = styled.button`
+  height: 2.25rem;
+  padding: 0 0.875rem;
+  border-radius: 0.5rem;
+  background: ${colors.green[600]};
+  color: ${colors.white};
+  border: none;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover:not(:disabled) {
+    background: ${colors.green[600]};
+  }
+
+  &:disabled {
+    background: ${colors.gray[400]};
+    cursor: not-allowed;
+  }
+`;
+
+const EditButton = styled.button`
+  height: 2.25rem;
+  padding: 0 0.875rem;
+  border-radius: 0.5rem;
+  background: ${colors.blue[700]};
+  color: ${colors.white};
+  border: none;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background: ${colors.blue[800]};
+  }
+`;
+
+const DeleteButton = styled.button`
+  height: 2.25rem;
+  padding: 0 0.875rem;
+  border-radius: 0.5rem;
+  background: ${colors.red[600]};
+  color: ${colors.white};
+  border: none;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background: #b91c1c;
+  }
 `;
 
 const Loading = styled.div`
