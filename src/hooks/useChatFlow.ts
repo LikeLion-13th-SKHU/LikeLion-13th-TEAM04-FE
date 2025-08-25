@@ -69,6 +69,26 @@ export const useChatFlow = (): UseChatFlowResult => {
     [pushText]
   );
 
+  // 로딩 안내 말풍선 추가/제거 유틸
+  const pushLoadingBot = useCallback(() => {
+    const id = crypto.randomUUID();
+    setMessages((prev) => [
+      ...prev,
+      {
+        id,
+        role: "bot",
+        kind: "text",
+        text: "잠시만 기다려주세요!",
+        createdAt: Date.now(),
+      },
+    ]);
+    return id;
+  }, []);
+
+  const removeMessageById = useCallback((targetId: string) => {
+    setMessages((prev) => prev.filter((m) => m.id !== targetId));
+  }, []);
+
   const pushRecommendations = useCallback(
     (role: "bot" | "user", recs: Recommendation[]) => {
       if (!recs || recs.length === 0) return;
@@ -137,12 +157,14 @@ export const useChatFlow = (): UseChatFlowResult => {
             setRoomId(currentRoomId);
           }
 
+          const loadingId = pushLoadingBot();
           const ai = await sendAiChat({
             roomId: currentRoomId,
             userId: my,
             text: nextRole,
           });
 
+          removeMessageById(loadingId);
           pushBotReply(ai.data.reply);
           const recs = mapResultsToRecommendations(ai.data.results);
           pushRecommendations("bot", recs);
@@ -156,6 +178,8 @@ export const useChatFlow = (): UseChatFlowResult => {
       mapResultsToRecommendations,
       pushRecommendations,
       pushBotReply,
+      pushLoadingBot,
+      removeMessageById,
     ]
   );
 
@@ -179,7 +203,9 @@ export const useChatFlow = (): UseChatFlowResult => {
         currentRoomId = res.data.roomId;
         setRoomId(currentRoomId);
       }
+      const loadingId = pushLoadingBot();
       const ai = await sendAiChat({ roomId: currentRoomId, userId: my, text });
+      removeMessageById(loadingId);
       pushBotReply(ai.data.reply);
 
       const recs = mapResultsToRecommendations(ai.data.results);
@@ -202,6 +228,8 @@ export const useChatFlow = (): UseChatFlowResult => {
     mapResultsToRecommendations,
     pushRecommendations,
     pushBotReply,
+    pushLoadingBot,
+    removeMessageById,
   ]);
 
   const showSummary = useCallback(() => {
@@ -242,6 +270,7 @@ export const useChatFlow = (): UseChatFlowResult => {
       const text = summaryTextRef.current || detailsBufferRef.current.join(" ");
       if (!text) throw new Error("전송할 내용이 없습니다.");
 
+      const loadingId = pushLoadingBot();
       const res = await sendAiChat({
         roomId:
           roomId ||
@@ -253,6 +282,7 @@ export const useChatFlow = (): UseChatFlowResult => {
         text,
       });
 
+      removeMessageById(loadingId);
       pushBotReply(res.data.reply);
       const recs = mapResultsToRecommendations(res.data.results);
       pushRecommendations("bot", recs);
@@ -270,6 +300,8 @@ export const useChatFlow = (): UseChatFlowResult => {
     mapResultsToRecommendations,
     pushRecommendations,
     pushBotReply,
+    pushLoadingBot,
+    removeMessageById,
   ]);
 
   const reset = useCallback(() => {
@@ -310,18 +342,28 @@ export const useChatFlow = (): UseChatFlowResult => {
 
         pushText("user", INITIAL_HELLO);
 
+        const loadingId = pushLoadingBot();
         const ai = await sendAiChat({
           roomId: currentRoomId,
           userId: my,
           text: INITIAL_HELLO,
         });
-
+        removeMessageById(loadingId);
         pushBotReply(ai.data.reply);
         const recs = mapResultsToRecommendations(ai.data.results);
         pushRecommendations("bot", recs);
       } catch {}
     })();
-  }, [user]);
+  }, [
+    user,
+    roomId,
+    pushText,
+    pushBotReply,
+    pushLoadingBot,
+    removeMessageById,
+    mapResultsToRecommendations,
+    pushRecommendations,
+  ]);
 
   return {
     role,
