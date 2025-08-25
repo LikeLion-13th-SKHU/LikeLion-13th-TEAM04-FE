@@ -78,6 +78,7 @@ const NoticeListPage = () => {
           pay: p.salary,
           createdAt: p.createAt,
           category: (category as any) || "기타",
+          authorId: p.memberId,
         })) as NoticePost[];
         setServerItems(posts);
         setServerTotalPages(res.data.pagination.totalPages || 1);

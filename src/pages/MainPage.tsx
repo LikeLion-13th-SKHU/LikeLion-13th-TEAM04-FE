@@ -1,17 +1,20 @@
 import styled from "styled-components";
-import { ReactComponent as SearchIcon } from "../assets/icons/search.svg";
-import { ReactComponent as MenuIcon } from "../assets/icons/menu.svg";
 import { ReactComponent as ArrowLeftIcon } from "../assets/icons/arrow-left.svg";
 import { ReactComponent as ArrowRightIcon } from "../assets/icons/arrow-right.svg";
-import { ReactComponent as CafeIcon } from "../assets/icons/cafe.svg";
-import { ReactComponent as ConvenienceIcon } from "../assets/icons/convenience.svg";
-import { ReactComponent as DeliveryIcon } from "../assets/icons/delivery.svg";
-import { ReactComponent as RestaurantIcon } from "../assets/icons/restaurant.svg";
 import { useAuth } from "../contexts/AuthContext";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { axiosInstance } from "../utils/apiConfig";
 import axios from "axios";
+
+interface JobPost {
+  post_id: number;
+  title: string;
+  location: string;
+  salary: number;
+  tags: string | string[];
+  createAt: string;
+}
 
 export default function MainPage() {
   const { user } = useAuth();
@@ -19,6 +22,18 @@ export default function MainPage() {
   const [portfolioCount, setPortfolioCount] = useState(0);
   const [activeYouthCount, setActiveYouthCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [jobPosts, setJobPosts] = useState<JobPost[]>([]);
+  const [jobPostsLoading, setJobPostsLoading] = useState(true);
+
+  const formatTags = (tags: any): string[] => {
+    if (typeof tags === 'string') {
+      return tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+    }
+    if (Array.isArray(tags)) {
+      return tags.map(tag => String(tag)).filter(tag => tag.length > 0);
+    }
+    return [];
+  };
 
 
 
@@ -53,29 +68,22 @@ export default function MainPage() {
         
         // 청년 역할의 멤버 수는 모든 사용자가 볼 수 있음 (인증 토큰 불필요)
         const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
-        const youthResponse = await axios.get(`${apiBaseUrl}/api/members/by-role?role=YOUTH`);
-        console.log('청년 수 API 응답:', youthResponse);
-        console.log('청년 수 응답 데이터:', youthResponse.data);
+        const youthResponse = await axiosInstance.get(`${apiBaseUrl}/api/members/by-role?role=YOUTH`);
         
         if (youthResponse.status === 200) {
           const youthCount = youthResponse.data.totalElements || 0;
-          console.log('설정할 청년 수:', youthCount);
           setActiveYouthCount(youthCount);
         }
         
         // 포트폴리오 개수는 모든 사용자가 볼 수 있음 (인증 토큰 불필요)
-        const portfolioResponse = await axios.get(`${apiBaseUrl}/api/portfolios/search`);
-        console.log('포트폴리오 수 API 응답:', portfolioResponse);
-        console.log('포트폴리오 수 응답 데이터:', portfolioResponse.data);
+        const portfolioResponse = await axiosInstance.get(`${apiBaseUrl}/api/portfolios/search`);
         
         if (portfolioResponse.status === 200) {
           const portfolioCount = portfolioResponse.data.totalElements || portfolioResponse.data.length || 0;
-          console.log('설정할 포트폴리오 수:', portfolioCount);
           setPortfolioCount(portfolioCount);
         }
         
       } catch (error) {
-        console.error('통계 데이터 가져오기 오류:', error);
         // 에러 발생 시 기본값 설정
         setActiveYouthCount(0);
         setPortfolioCount(0);
@@ -87,26 +95,32 @@ export default function MainPage() {
     fetchStats();
   }, [user]); // user 의존성 다시 추가
 
+  // 최신 채용 공고 가져오기
+  useEffect(() => {
+    const fetchJobPosts = async () => {
+      try {
+        setJobPostsLoading(true);
+        const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
+        const response = await axiosInstance.get(`${apiBaseUrl}/main/post`);
+        
+        if (response.status === 200 && response.data.success) {
+          setJobPosts(response.data.data || []);
+        } else {
+          setJobPosts([]);
+        }
+      } catch (error) {
+        console.error('채용 공고를 불러오는데 실패했습니다:', error);
+        setJobPosts([]);
+      } finally {
+        setJobPostsLoading(false);
+      }
+    };
+
+    fetchJobPosts();
+  }, []);
+
   return (
     <MainContainer>
-      {/* 검색 및 필터 섹션 */}
-      <SearchSection>
-        <SearchRow>
-          <MenuButton>
-            <MenuIcon />
-          </MenuButton>
-
-          <SearchBar>
-            <SearchIcon />
-            <SearchInput placeholder="검색" />
-          </SearchBar>
-        </SearchRow>
-
-        <FilterButtons>
-          {/* 지역별 카테고리는 제거됨 */}
-        </FilterButtons>
-      </SearchSection>
-
       {/* 캐러셀 섹션 */}
       <CarouselSection>
         <CarouselContainer>
@@ -158,40 +172,6 @@ export default function MainPage() {
 
       {/* 메인 콘텐츠 섹션 */}
       <ContentSection>
-        {/* 인기 카테고리 */}
-        <CategorySection>
-          <SectionHeader>
-            <SectionTitle>인기 카테고리</SectionTitle>
-            <ViewAllLink to="/notices">전체보기 →</ViewAllLink>
-          </SectionHeader>
-          <CategoryGrid>
-            <CategoryCard>
-              <CategoryIcon>
-                <CafeIcon />
-              </CategoryIcon>
-              <CategoryName>카페</CategoryName>
-            </CategoryCard>
-            <CategoryCard>
-              <CategoryIcon>
-                <ConvenienceIcon />
-              </CategoryIcon>
-              <CategoryName>편의점</CategoryName>
-            </CategoryCard>
-            <CategoryCard>
-              <CategoryIcon>
-                <DeliveryIcon />
-              </CategoryIcon>
-              <CategoryName>배달</CategoryName>
-            </CategoryCard>
-            <CategoryCard>
-              <CategoryIcon>
-                <RestaurantIcon />
-              </CategoryIcon>
-              <CategoryName>음식점</CategoryName>
-            </CategoryCard>
-          </CategoryGrid>
-        </CategorySection>
-
         {/* 최신 채용 공고 */}
         <JobSection>
           <SectionHeader>
@@ -199,30 +179,46 @@ export default function MainPage() {
             <ViewAllLink to="/notices">전체보기 →</ViewAllLink>
           </SectionHeader>
           <JobList>
-            <JobCard>
-              <JobHeader>
-                <JobTitle>카페 ㅇㅇ점 파트타임 직원 모집</JobTitle>
-                <JobSalary>시급 12,000</JobSalary>
-              </JobHeader>
-              <JobCompany>회사명</JobCompany>
-              <JobTags>
-                <JobTag>카페</JobTag>
-                <JobTag>주말근무</JobTag>
-                <JobTag>초보환영</JobTag>
-              </JobTags>
-            </JobCard>
-            <JobCard>
-              <JobHeader>
-                <JobTitle>○○치킨집 홀서빙 직원 모집</JobTitle>
-                <JobSalary>시급 12,000</JobSalary>
-              </JobHeader>
-              <JobCompany>회사명</JobCompany>
-              <JobTags>
-                <JobTag>음식점</JobTag>
-                <JobTag>서빙</JobTag>
-                <JobTag>경력무관</JobTag>
-              </JobTags>
-            </JobCard>
+            {jobPostsLoading ? (
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                padding: '2rem 1rem', 
+                textAlign: 'center' 
+              }}>
+                <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>채용 공고를 불러오는 중...</p>
+              </div>
+            ) : jobPosts.length === 0 ? (
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                padding: '2rem 1rem', 
+                textAlign: 'center' 
+              }}>
+                <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📋</div>
+                <p style={{ fontSize: '0.875rem', color: '#9ca3af', margin: 0 }}>등록된 채용 공고가 없습니다</p>
+              </div>
+            ) : (
+              jobPosts.slice(0, 2).map((post) => (
+                <JobCard key={post.post_id}>
+                  <JobHeader>
+                    <JobTitle>{post.title}</JobTitle>
+                    <JobSalary>시급 {post.salary.toLocaleString()}</JobSalary>
+                  </JobHeader>
+                  <JobCompany>{post.location}</JobCompany>
+                  <JobTags>
+                    {formatTags(post.tags).map((tag, index) => (
+                      <JobTag key={index}>{tag}</JobTag>
+                    ))}
+                  </JobTags>
+                </JobCard>
+              ))
+            )}
           </JobList>
         </JobSection>
 
@@ -248,7 +244,6 @@ export default function MainPage() {
           </PortfolioStats>
         </PortfolioSection>
       </ContentSection>
-
               
     </MainContainer>
   );
@@ -266,124 +261,6 @@ const MainContainer = styled.main`
 
   @media (min-width: 1024px) {
     padding: 1rem 5rem;
-  }
-`;
-
-const SearchSection = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  width: 100%;
-`;
-
-const SearchRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  justify-content: center;
-  width: 100%;
-  max-width: 600px;
-  position: relative;
-
-  @media (max-width: 768px) {
-    justify-content: flex-start;
-    gap: 0.75rem;
-  }
-`;
-
-const MenuButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border: none;
-  background: transparent;
-  color: ${({ theme }) => theme.colors.gray[900]};
-  cursor: pointer;
-  flex-shrink: 0;
-  position: absolute;
-  left: 0;
-
-  &:hover {
-    color: ${({ theme }) => theme.colors.blue[900]};
-  }
-
-  @media (max-width: 768px) {
-    position: static;
-    width: 44px;
-    height: 44px;
-  }
-`;
-
-const FilterButtons = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  justify-content: center;
-  width: 100%;
-
-  @media (max-width: 768px) {
-    gap: 0.25rem;
-  }
-`;
-
-const FilterButton = styled.button`
-  padding: 0.5rem 1rem;
-  border: 1px solid ${({ theme }) => theme.colors.gray[200]};
-  border-radius: 20px;
-  background: white;
-  color: ${({ theme }) => theme.colors.gray[900]};
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    background: ${({ theme }) => theme.colors.blue[100]};
-    border-color: ${({ theme }) => theme.colors.blue[300]};
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.8rem;
-  }
-`;
-
-
-
-const SearchBar = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid ${({ theme }) => theme.colors.gray[200]};
-  border-radius: 8px;
-  background: white;
-  width: 100%;
-  max-width: 400px;
-
-  svg {
-    width: 20px;
-    height: 20px;
-    color: ${({ theme }) => theme.colors.gray[900]};
-  }
-
-  @media (max-width: 768px) {
-    max-width: none;
-    flex: 1;
-  }
-`;
-
-const SearchInput = styled.input`
-  flex: 1;
-  border: none;
-  outline: none;
-  font-size: 1rem;
-
-  &::placeholder {
-    color: ${({ theme }) => theme.colors.gray[900]};
   }
 `;
 
@@ -533,13 +410,14 @@ const ContentSection = styled.div`
   display: grid;
   grid-template-columns: 1fr;
   gap: 2rem;
+  align-items: start;
 
   @media (min-width: 768px) {
     grid-template-columns: 1fr 1fr;
   }
 
   @media (min-width: 1024px) {
-    grid-template-columns: 1fr 2fr 1fr;
+    grid-template-columns: 2fr 1fr;
   }
 `;
 
@@ -567,70 +445,33 @@ const ViewAllLink = styled(Link)`
   }
 `;
 
-const CategorySection = styled.div``;
-
-const CategoryGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-
-  @media (max-width: 480px) {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
-`;
-
-const CategoryCard = styled.div`
+const JobSection = styled.div`
+  grid-column: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1rem;
-  border: 1px solid ${({ theme }) => theme.colors.gray[200]};
-  border-radius: 8px;
-  background: white;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    border-color: ${({ theme }) => theme.colors.blue[300]};
-    box-shadow: 0 2px 8px rgba(33, 66, 171, 0.1);
-  }
+  min-height: 400px;
 `;
-
-const CategoryIcon = styled.div`
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
-
-const CategoryName = styled.span`
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: ${({ theme }) => theme.colors.gray[900]};
-`;
-
-const JobSection = styled.div``;
 
 const JobList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  flex: 1;
 `;
 
 const JobCard = styled.div`
-  padding: 1rem;
+  padding: 1.5rem;
   border: 1px solid ${({ theme }) => theme.colors.gray[200]};
-  border-radius: 8px;
+  border-radius: 12px;
   background: white;
   cursor: pointer;
   transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 
   &:hover {
     border-color: ${({ theme }) => theme.colors.blue[300]};
-    box-shadow: 0 2px 8px rgba(33, 66, 171, 0.1);
+    box-shadow: 0 4px 12px rgba(33, 66, 171, 0.15);
+    transform: translateY(-2px);
   }
 `;
 
@@ -638,31 +479,34 @@ const JobHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
 `;
 
 const JobTitle = styled.h3`
-  font-size: 1rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: ${({ theme }) => theme.colors.gray[900]};
   margin: 0;
   flex: 1;
+  line-height: 1.4;
 `;
 
 const JobSalary = styled.span`
   background: #ffd700;
   color: ${({ theme }) => theme.colors.gray[900]};
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
   font-weight: 600;
   white-space: nowrap;
+  margin-left: 1rem;
 `;
 
 const JobCompany = styled.p`
   font-size: 0.875rem;
-  color: ${({ theme }) => theme.colors.gray[900]};
-  margin: 0 0 0.5rem 0;
+  color: ${({ theme }) => theme.colors.gray[700]};
+  margin: 0 0 0.75rem 0;
+  font-weight: 500;
 `;
 
 const JobTags = styled.div`
@@ -672,97 +516,130 @@ const JobTags = styled.div`
 `;
 
 const JobTag = styled.span`
-  background: ${({ theme }) => theme.colors.gray[100]};
-  color: ${({ theme }) => theme.colors.gray[900]};
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  background: ${({ theme }) => theme.colors.blue[100]};
+  color: ${({ theme }) => theme.colors.blue[700]};
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
   font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid ${({ theme }) => theme.colors.blue[300]};
 `;
 
-const PortfolioSection = styled.div``;
+const PortfolioSection = styled.div`
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 400px;
+  justify-content: flex-start;
+`;
 
 const PortfolioStats = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.5rem;
+  justify-content: space-between;
+  height: 100%;
 `;
 
 const StatCard = styled.div`
   padding: 1.5rem;
   background: ${({ theme }) => theme.colors.blue[900]};
-  border-radius: 8px;
+  border-radius: 12px;
   color: white;
   text-align: center;
+  box-shadow: 0 4px 12px rgba(33, 66, 171, 0.2);
+  transition: all 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(33, 66, 171, 0.3);
+  }
 `;
 
 const StatNumber = styled.div`
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: 700;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+  color: ${({ theme }) => theme.colors.white};
 `;
 
 const StatLabel = styled.div`
-  font-size: 0.875rem;
-  opacity: 0.9;
-`;
-
-const ActionSection = styled.div`
-  display: flex;
-  justify-content: center;
-  margin-top: 2rem;
-  margin-bottom: 2rem;
-
-  @media (max-width: 768px) {
-    margin-top: 1.5rem;
-    margin-bottom: 1.5rem;
-  }
-`;
-
-const ActionButton = styled.a`
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 8px;
-  background: ${({ theme }) => theme.colors.blue[900]};
-  color: white;
   font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  text-decoration: none;
-
-  &:hover {
-    background: ${({ theme }) => theme.colors.blue[700]};
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.625rem 1.25rem;
-    font-size: 0.9rem;
-  }
+  opacity: 0.9;
+  font-weight: 500;
+  line-height: 1.4;
 `;
-
-
 
 const PortfolioStatCard = styled(Link)`
   padding: 1.5rem;
   background: ${({ theme }) => theme.colors.blue[900]};
-  border-radius: 8px;
+  border-radius: 12px;
   color: white;
   text-align: center;
   text-decoration: none;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   position: relative;
   cursor: pointer;
+  box-shadow: 0 4px 12px rgba(33, 66, 171, 0.2);
 
   &:hover {
     background: ${({ theme }) => theme.colors.blue[700]};
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(33, 66, 171, 0.3);
   }
 `;
 
 const ViewAllText = styled.div`
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   opacity: 0.8;
-  margin-top: 0.5rem;
+  margin-top: 0.75rem;
   font-weight: 500;
+  color: ${({ theme }) => theme.colors.blue[100]};
+`;
+
+const LoadingState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  text-align: center;
+`;
+
+const LoadingIcon = styled.div`
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  animation: spin 1s linear infinite;
+  
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+`;
+
+const LoadingText = styled.p`
+  font-size: 0.875rem;
+  color: ${({ theme }) => theme.colors.gray[600]};
+  margin: 0;
+`;
+
+const EmptyState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  text-align: center;
+`;
+
+const EmptyIcon = styled.div`
+  font-size: 2rem;
+  margin-bottom: 1rem;
+`;
+
+const EmptyText = styled.p`
+  font-size: 0.875rem;
+  color: ${({ theme }) => theme.colors.gray[500]};
+  margin: 0;
 `;
