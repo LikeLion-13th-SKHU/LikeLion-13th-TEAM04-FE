@@ -3,9 +3,8 @@ import { ReactComponent as ArrowLeftIcon } from "../assets/icons/arrow-left.svg"
 import { ReactComponent as ArrowRightIcon } from "../assets/icons/arrow-right.svg";
 import { useAuth } from "../contexts/AuthContext";
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { axiosInstance } from "../utils/apiConfig";
-import axios from "axios";
 
 interface JobPost {
   post_id: number;
@@ -18,6 +17,7 @@ interface JobPost {
 
 export default function MainPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [portfolioCount, setPortfolioCount] = useState(0);
   const [activeYouthCount, setActiveYouthCount] = useState(0);
@@ -26,16 +26,17 @@ export default function MainPage() {
   const [jobPostsLoading, setJobPostsLoading] = useState(true);
 
   const formatTags = (tags: any): string[] => {
-    if (typeof tags === 'string') {
-      return tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+    if (typeof tags === "string") {
+      return tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0);
     }
     if (Array.isArray(tags)) {
-      return tags.map(tag => String(tag)).filter(tag => tag.length > 0);
+      return tags.map((tag) => String(tag)).filter((tag) => tag.length > 0);
     }
     return [];
   };
-
-
 
   const slides = [
     {
@@ -58,31 +59,35 @@ export default function MainPage() {
     setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
   };
 
-
-
   // 활동중인 청년 수와 포트폴리오 수 가져오기
   useEffect(() => {
     const fetchStats = async () => {
       try {
         setIsLoading(true);
-        
+
         // 청년 역할의 멤버 수는 모든 사용자가 볼 수 있음 (인증 토큰 불필요)
         const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
-        const youthResponse = await axiosInstance.get(`${apiBaseUrl}/api/members/by-role?role=YOUTH`);
-        
+        const youthResponse = await axiosInstance.get(
+          `${apiBaseUrl}/api/members/by-role?role=YOUTH`
+        );
+
         if (youthResponse.status === 200) {
           const youthCount = youthResponse.data.totalElements || 0;
           setActiveYouthCount(youthCount);
         }
-        
+
         // 포트폴리오 개수는 모든 사용자가 볼 수 있음 (인증 토큰 불필요)
-        const portfolioResponse = await axiosInstance.get(`${apiBaseUrl}/api/portfolios/search`);
-        
+        const portfolioResponse = await axiosInstance.get(
+          `${apiBaseUrl}/api/portfolios/search`
+        );
+
         if (portfolioResponse.status === 200) {
-          const portfolioCount = portfolioResponse.data.totalElements || portfolioResponse.data.length || 0;
+          const portfolioCount =
+            portfolioResponse.data.totalElements ||
+            portfolioResponse.data.length ||
+            0;
           setPortfolioCount(portfolioCount);
         }
-        
       } catch (error) {
         // 에러 발생 시 기본값 설정
         setActiveYouthCount(0);
@@ -102,14 +107,14 @@ export default function MainPage() {
         setJobPostsLoading(true);
         const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
         const response = await axiosInstance.get(`${apiBaseUrl}/main/post`);
-        
+
         if (response.status === 200 && response.data.success) {
           setJobPosts(response.data.data || []);
         } else {
           setJobPosts([]);
         }
       } catch (error) {
-        console.error('채용 공고를 불러오는데 실패했습니다:', error);
+        console.error("채용 공고를 불러오는데 실패했습니다:", error);
         setJobPosts([]);
       } finally {
         setJobPostsLoading(false);
@@ -180,32 +185,47 @@ export default function MainPage() {
           </SectionHeader>
           <JobList>
             {jobPostsLoading ? (
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                padding: '2rem 1rem', 
-                textAlign: 'center' 
-              }}>
-                <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
-                <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>채용 공고를 불러오는 중...</p>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "2rem 1rem",
+                  textAlign: "center",
+                }}
+              >
+                <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>⏳</div>
+                <p
+                  style={{ fontSize: "0.875rem", color: "#6b7280", margin: 0 }}
+                >
+                  채용 공고를 불러오는 중...
+                </p>
               </div>
             ) : jobPosts.length === 0 ? (
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                padding: '2rem 1rem', 
-                textAlign: 'center' 
-              }}>
-                <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📋</div>
-                <p style={{ fontSize: '0.875rem', color: '#9ca3af', margin: 0 }}>등록된 채용 공고가 없습니다</p>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "2rem 1rem",
+                  textAlign: "center",
+                }}
+              >
+                <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>📋</div>
+                <p
+                  style={{ fontSize: "0.875rem", color: "#9ca3af", margin: 0 }}
+                >
+                  등록된 채용 공고가 없습니다
+                </p>
               </div>
             ) : (
               jobPosts.slice(0, 2).map((post) => (
-                <JobCard key={post.post_id}>
+                <JobCard
+                  key={post.post_id}
+                  onClick={() => navigate(`/notices/${post.post_id}`)}
+                >
                   <JobHeader>
                     <JobTitle>{post.title}</JobTitle>
                     <JobSalary>시급 {post.salary.toLocaleString()}</JobSalary>
@@ -230,21 +250,20 @@ export default function MainPage() {
           <PortfolioStats>
             <PortfolioStatCard to="/portfolios">
               <StatNumber>
-                {isLoading ? '...' : portfolioCount.toLocaleString()}
+                {isLoading ? "..." : portfolioCount.toLocaleString()}
               </StatNumber>
               <StatLabel>등록된 포트폴리오</StatLabel>
               <ViewAllText>전체보기 →</ViewAllText>
             </PortfolioStatCard>
             <StatCard>
               <StatNumber>
-                {isLoading ? '...' : activeYouthCount.toLocaleString()}
+                {isLoading ? "..." : activeYouthCount.toLocaleString()}
               </StatNumber>
               <StatLabel>활동중인 청년</StatLabel>
             </StatCard>
           </PortfolioStats>
         </PortfolioSection>
       </ContentSection>
-              
     </MainContainer>
   );
 }
@@ -598,48 +617,4 @@ const ViewAllText = styled.div`
   color: ${({ theme }) => theme.colors.blue[100]};
 `;
 
-const LoadingState = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem 1rem;
-  text-align: center;
-`;
-
-const LoadingIcon = styled.div`
-  font-size: 2rem;
-  margin-bottom: 1rem;
-  animation: spin 1s linear infinite;
-  
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-`;
-
-const LoadingText = styled.p`
-  font-size: 0.875rem;
-  color: ${({ theme }) => theme.colors.gray[600]};
-  margin: 0;
-`;
-
-const EmptyState = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem 1rem;
-  text-align: center;
-`;
-
-const EmptyIcon = styled.div`
-  font-size: 2rem;
-  margin-bottom: 1rem;
-`;
-
-const EmptyText = styled.p`
-  font-size: 0.875rem;
-  color: ${({ theme }) => theme.colors.gray[500]};
-  margin: 0;
-`;
+// 미사용 스타일 제거

@@ -31,12 +31,20 @@ export interface ChatRoomItem {
   participantId: number;
   postId: number;
   createdAt: string;
+  participantProfile?: {
+    userId: number;
+    name: string;
+    profileImage: string;
+  };
 }
 
 // 채팅방 목록 조회
 export const getChatRooms = async (): Promise<ChatRoomListResponse> => {
   try {
-    const response = await axiosInstance.get<ChatRoomListResponse>('/chat/rooms');
+    const response = await axiosInstance.get<ChatRoomListResponse>(
+      "/chat/rooms"
+    );
+    console.log(response.data);
     return response.data;
   } catch (error: any) {
     throw error;
@@ -44,9 +52,14 @@ export const getChatRooms = async (): Promise<ChatRoomListResponse> => {
 };
 
 // 사용자 간 직접 채팅방 생성
-export const createUserChatRoom = async (payload: CreateChatRoomPayload): Promise<CreateChatRoomResponse> => {
+export const createUserChatRoom = async (
+  payload: CreateChatRoomPayload
+): Promise<CreateChatRoomResponse> => {
   try {
-    const response = await axiosInstance.post<CreateChatRoomResponse>('/chat/rooms', payload);
+    const response = await axiosInstance.post<CreateChatRoomResponse>(
+      "/chat/rooms",
+      payload
+    );
     return response.data;
   } catch (error: any) {
     throw error;
@@ -89,3 +102,60 @@ export const sendAiChat = async (params: {
   return res.data;
 };
 
+export type ChatMessageHistoryItem = {
+  id: number;
+  roomId: number;
+  senderId: number;
+  type: string; // e.g., "ENTER", "TALK", "LEAVE"
+  content: string;
+  createdAt: string; // ISO date string
+};
+
+export type ChatMessageHistoryResponse = {
+  success: boolean;
+  code: string;
+  message: string;
+  data: {
+    content: ChatMessageHistoryItem[];
+    hasNext: boolean;
+    nextCursor: number | null;
+  };
+};
+
+export const getRoomMessages = async (
+  roomId: number,
+  params?: { cursor?: number; size?: number }
+): Promise<ChatMessageHistoryResponse> => {
+  const query = new URLSearchParams();
+  if (params?.cursor !== undefined) query.set("cursor", String(params.cursor));
+  if (params?.size !== undefined) query.set("size", String(params.size));
+
+  const url = `/chat/rooms/${roomId}/messages${
+    query.toString() ? `?${query.toString()}` : ""
+  }`;
+  const res = await axiosInstance.get<ChatMessageHistoryResponse>(url);
+  return res.data;
+};
+
+export type SendRoomMessagePayload = {
+  type: "TALK" | "ENTER" | "LEAVE";
+  content: string;
+};
+
+export type SendRoomMessageResponse = {
+  success: boolean;
+  code: string;
+  message: string;
+  data: ChatMessageHistoryItem;
+};
+
+export const sendRoomMessage = async (
+  roomId: number,
+  payload: SendRoomMessagePayload
+): Promise<SendRoomMessageResponse> => {
+  const res = await axiosInstance.post<SendRoomMessageResponse>(
+    `/chat/rooms/${roomId}/messages`,
+    payload
+  );
+  return res.data;
+};

@@ -40,14 +40,14 @@ const NoticeListPage = () => {
   const [serverTotalPages, setServerTotalPages] = useState<number | null>(null);
   const [serverItems, setServerItems] = useState<NoticePost[] | null>(null);
 
-  // URL 쿼리 동기화
+  // // URL 쿼리 동기화
   useEffect(() => {
     const params: Record<string, string> = {
-      page: String(page),
-      size: String(size),
+      // page: String(page),
+      // size: String(size),
     };
     if (category) params.category = category;
-    if (q) params.q = q;
+    // if (q) params.q = q;
     setSearchParams(params);
   }, [q, category, page, size, setSearchParams]);
 

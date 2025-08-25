@@ -28,7 +28,13 @@ export const getPosts = async ({
 
   params.category = category;
 
-  if (sort) params.sort = sort;
+  if (category === "ALL" && sort) {
+    params.sort = sort;
+  } else {
+    params.sort = null;
+  }
+
+  console.log(params.category);
 
   const res = await axiosInstance.get<BackendPostsResponse>(`/posts`, {
     params,
@@ -41,6 +47,11 @@ export const getPostDetail = async (postId: string | number) => {
   const res = await axiosInstance.get<BackendPostDetailResponse>(
     `/posts/${postId}`
   );
+  return res.data;
+};
+
+export const deletePost = async (postId: string | number) => {
+  const res = await axiosInstance.delete(`/posts/${postId}`);
   return res.data;
 };
 
@@ -61,8 +72,6 @@ export interface CreatePostPayload {
 
 export const createPost = async (payload: CreatePostPayload) => {
   const form = new FormData();
-
-
 
   form.append("category", payload.category);
   form.append("title", payload.title);
@@ -105,5 +114,57 @@ export const createPost = async (payload: CreatePostPayload) => {
   const res = await axiosInstance.post(`/posts/save`, form);
   console.log(res);
 
+  return res.data;
+};
+
+export type UpdatePostPayload = Partial<
+  Pick<
+    CreatePostPayload,
+    | "title"
+    | "content"
+    | "location"
+    | "salary"
+    | "work_time"
+    | "deadline"
+    | "num"
+    | "work_period"
+    | "tags"
+  >
+>;
+
+export const updatePost = async (
+  postId: string | number,
+  payload: UpdatePostPayload
+) => {
+  const body: Record<string, any> = {};
+
+  if (payload.title !== undefined) body.title = payload.title;
+  if (payload.content !== undefined) body.content = payload.content;
+  if (payload.location !== undefined) body.location = payload.location;
+  if (payload.salary !== undefined) body.salary = payload.salary;
+  if (payload.num !== undefined) body.num = payload.num;
+  if (payload.tags !== undefined) body.tags = payload.tags;
+
+  if (payload.work_time !== undefined) {
+    body.work_time = payload.work_time.replace(/\s+/g, "").replace(/-/g, "~");
+  }
+
+  if (payload.deadline !== undefined && payload.deadline.trim().length > 0) {
+    body.deadline = payload.deadline
+      .trim()
+      .replace(/\s+/g, "")
+      .replaceAll("-", ".");
+  }
+
+  if (payload.work_period !== undefined) {
+    body.work_period = payload.work_period
+      .trim()
+      .replace(/\s+/g, "")
+      .replaceAll("-", ".");
+  }
+
+  const res = await axiosInstance.patch(`/posts/${postId}`, body, {
+    headers: { "Content-Type": "application/json" },
+  });
   return res.data;
 };

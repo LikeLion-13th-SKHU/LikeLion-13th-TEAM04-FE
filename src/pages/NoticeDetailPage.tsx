@@ -3,7 +3,7 @@ import { colors } from "../styles/theme";
 import type { NoticePost } from "../types/notice";
 import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { getPostDetail } from "../api/posts";
+import { getPostDetail, deletePost } from "../api/posts";
 import { createUserChatRoom } from "../api/chat";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -41,7 +41,8 @@ const NoticeDetailPage = () => {
           workHours: d.work_time,
           description: d.content,
           logoUrl: undefined,
-          authorId: d.memberId,
+          authorId: d.postUserId ?? d.memberId,
+          isUser: d.isUser,
         };
         if (!cancelled) setData(mapped);
       } catch (e: any) {
@@ -66,35 +67,28 @@ const NoticeDetailPage = () => {
 
     if (!data) return;
 
-    // 작성자와 채팅하려는 사용자가 같은 사람인지 확인
-    if (user?.memberId === data.authorId) {
+    // 본인 글이면 채팅 불가
+    if (data.isUser || user?.memberId === data.authorId) {
       alert("자신의 공고글과는 채팅할 수 없습니다.");
       return;
     }
 
     setChatLoading(true);
     try {
-      // 공고글 작성자의 memberId 사용
-      // const authorMemberId = data.authorId;
-      const authorMemberId = 9;
-      const test1 = 29;
-      
+      const authorMemberId = data.authorId;
+
       if (!authorMemberId) {
         alert("작성자 정보를 찾을 수 없습니다.");
         return;
       }
 
-  
-      
       const response = await createUserChatRoom({
         type: "DIRECT",
         otherUserId: authorMemberId,
-        roomName: "지원 문의",
-        // roomName: `{data.title} 지원 문의`,
-        // postId: Number(id)
-        postId: test1
+        roomName: `${data.title} 지원 문의`,
+        postId: Number(id),
       });
-      
+
       if (response.success) {
         alert("채팅방이 생성되었습니다.");
         navigate("/chat"); // 채팅 목록 페이지로 이동
@@ -105,6 +99,22 @@ const NoticeDetailPage = () => {
       alert("채팅방 생성 중 오류가 발생했습니다.");
     } finally {
       setChatLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!id) return;
+    if (!data?.isUser) return;
+    const ok = window.confirm("정말 이 공고를 삭제하시겠어요?");
+    if (!ok) return;
+    try {
+      await deletePost(id);
+      alert("공고가 삭제되었습니다.");
+      navigate("/notices");
+    } catch (e: any) {
+      const msg =
+        e?.response?.data?.message || e?.message || "삭제에 실패했습니다.";
+      alert(msg);
     }
   };
 
@@ -169,14 +179,35 @@ const NoticeDetailPage = () => {
 
             <Actions>
               <ApplyButton type="button">지원하기</ApplyButton>
-              {user?.memberId !== data.authorId && (
-                <ChatButton 
-                  type="button" 
+              {!data.isUser && (
+                <ChatButton
+                  type="button"
                   onClick={handleStartChat}
                   disabled={chatLoading}
                 >
                   {chatLoading ? "채팅방 생성 중..." : "이 사람과 채팅하기"}
                 </ChatButton>
+              )}
+              {data.isUser && (
+                <>
+                  <EditButton
+                    type="button"
+                    onClick={() =>
+                      navigate(`/notices/new`, {
+                        state: {
+                          mode: "edit",
+                          postId: id,
+                          initial: data,
+                        },
+                      })
+                    }
+                  >
+                    수정하기
+                  </EditButton>
+                  <DeleteButton type="button" onClick={handleDelete}>
+                    삭제하기
+                  </DeleteButton>
+                </>
               )}
             </Actions>
           </>
@@ -371,6 +402,45 @@ const ChatButton = styled.button`
   }
 `;
 
+const EditButton = styled.button`
+  height: 2.25rem;
+  padding: 0 0.875rem;
+  border-radius: 0.5rem;
+  background: ${colors.blue[700]};
+  color: ${colors.white};
+  border: none;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background: ${colors.blue[800]};
+  }
+`;
+
+const DeleteButton = styled.button`
+  height: 2.25rem;
+  padding: 0 0.875rem;
+  border-radius: 0.5rem;
+  background: ${colors.red[600]};
+  color: ${colors.white};
+  border: none;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background: #b91c1c;
+  }
+`;
 
 const Loading = styled.div`
   margin: 0.5rem 0 1rem;

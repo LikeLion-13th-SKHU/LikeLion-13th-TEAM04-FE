@@ -23,6 +23,7 @@ export interface NoticePost {
   description?: string;
   logoUrl?: string;
   authorId?: number; // 공고글 작성자 ID
+  isUser?: boolean; // 로그인 사용자가 작성자인지 여부
 }
 
 export interface BackendPostItem {
@@ -63,7 +64,9 @@ export interface BackendPostDetailData {
   work_period: string; // 2025.07.27~2025.07.28
   createAt: string; // 2025.07.20
   category: string; // 예: 카페
-  memberId?: number; // 공고글 작성자 ID
+  memberId?: number; // 공고글 작성자 ID (구버전 호환)
+  postUserId?: number; // 공고글 작성자 ID (신버전)
+  isUser?: boolean; // 로그인 사용자가 작성자인지 여부
 }
 
 export interface BackendPostDetailResponse {
