@@ -20,11 +20,10 @@ export default function InfoCard({
   currentGrade,
   onNicknameChange,
 }: InfoCardProps) {
-  const { updateUserRole, updateUserNickname, user, logout } = useAuth();
+  const { updateUserRole, updateUserNickname, user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [nickname, setNickname] = useState(userName);
   const [showRoleChange, setShowRoleChange] = useState(false);
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [isCheckingNickname, setIsCheckingNickname] = useState(false);
   const [nicknameStatus, setNicknameStatus] = useState<'idle' | 'available' | 'duplicate' | 'error'>('idle');
 
@@ -136,40 +135,6 @@ export default function InfoCard({
     }
   };
 
-  const handleWithdraw = async () => {
-    if (
-      !window.confirm(
-        "정말로 회원탈퇴를 하시겠습니까?\n\n탈퇴 시 모든 데이터가 영구적으로 삭제되며 복구할 수 없습니다."
-      )
-    ) {
-      return;
-    }
-
-    setIsWithdrawing(true);
-
-    try {
-      // 백엔드 API 호출하여 회원탈퇴 처리
-      const response = await axiosInstance.delete("/api/members/me");
-
-      if (response.status === 200) {
-        // 회원탈퇴 성공
-        alert("회원탈퇴가 완료되었습니다.");
-
-        // 로그아웃 처리
-        logout();
-
-        // 강제로 페이지 새로고침하여 모든 상태 초기화
-        window.location.reload();
-      } else {
-        throw new Error("회원탈퇴 처리에 실패했습니다.");
-      }
-    } catch (error: any) {
-      alert("회원탈퇴 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
-    } finally {
-      setIsWithdrawing(false);
-    }
-  };
-
   return (
     <InfoCardContainer>
       {/* 회원 정보 섹션 */}
@@ -266,21 +231,6 @@ export default function InfoCard({
             </GoogleText>
           </GoogleInfo>
         </PasswordContent>
-      </InfoSection>
-
-
-
-      {/* 회원탈퇴 섹션 */}
-      <InfoSection>
-        <SectionHeader>
-          <SectionTitle>회원탈퇴</SectionTitle>
-          <WithdrawButton onClick={handleWithdraw} disabled={isWithdrawing}>
-            {isWithdrawing ? "처리 중..." : "탈퇴"}
-          </WithdrawButton>
-        </SectionHeader>
-        <InfoDescription>
-          회원탈퇴 시 모든 데이터가 영구적으로 삭제되며 복구할 수 없습니다.
-        </InfoDescription>
       </InfoSection>
     </InfoCardContainer>
   );
@@ -548,32 +498,6 @@ const GoogleText = styled.div`
 `;
 
 
-
-const WithdrawButton = styled.button`
-  padding: 0.375rem 0.75rem;
-  background-color: ${colors.red[500]};
-  border: none;
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover:not(:disabled) {
-    background-color: ${colors.red[600]};
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-
-  &:disabled {
-    background-color: ${colors.gray[300]};
-    color: ${colors.gray[500]};
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-  }
-`;
 
 const Divider = styled.hr`
   border: none;
