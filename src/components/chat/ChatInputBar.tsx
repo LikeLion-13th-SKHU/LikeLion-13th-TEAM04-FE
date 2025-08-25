@@ -24,6 +24,16 @@ const ChatInputBar = ({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
+        onKeyDown={(e) => {
+          const isComposing = (e.nativeEvent as any)?.isComposing;
+          if (isComposing) return;
+          if (e.key === "Enter" && !e.shiftKey) {
+            if (disabled || value.trim().length === 0) return;
+            e.preventDefault();
+            const form = (e.currentTarget as HTMLTextAreaElement).form;
+            if (form) form.requestSubmit();
+          }
+        }}
       />
       <SendButton
         type="submit"

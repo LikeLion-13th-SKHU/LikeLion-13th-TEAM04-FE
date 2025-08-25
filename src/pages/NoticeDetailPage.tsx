@@ -178,7 +178,6 @@ const NoticeDetailPage = () => {
             </Section>
 
             <Actions>
-              <ApplyButton type="button">지원하기</ApplyButton>
               {!data.isUser && (
                 <ChatButton
                   type="button"
